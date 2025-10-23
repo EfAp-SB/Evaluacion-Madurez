@@ -433,6 +433,8 @@ function handleRegistration(e) {
     }, 1000);
 }
 
+// Funciones de personalización ya definidas arriba
+
 // ===== FUNCIONES AUXILIARES =====
 function getCurrentQuestion() {
     const category = categories[appState.evaluationData.currentCategory];
