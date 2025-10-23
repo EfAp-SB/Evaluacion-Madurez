@@ -4,9 +4,7 @@
    ================================ */
 
 // ===== CONFIGURACIÓN GLOBAL =====
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxV6oR9z1Px-YnlbZXR-rJ04Kz-6g7A6DLMDGwg9E460EGuBnS2X5TEcScXtXN0zCrVqA/exec';
-
-// ===== ESTADO DE LA APLICACIÓN =====
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxV6oR9z1Px-YnlbZXR-rJ04Kz-6g7A6DLMDGwg9E460EGuBnS2X5TEcScXtXN0zCrVqA/ex// ===== ESTADO DE LA APLICACIÓN =====
 let appState = {
     currentSection: 'landing',
     companyData: {},
@@ -14,12 +12,81 @@ let appState = {
         currentCategory: 0,
         currentQuestion: 0,
         answers: {},
-        categoryScores: {}
+        categoryScores: {},
+        achievements: [],
+        startTime: null,
+        completedCategories: []
     },
     consent: {
         essential: true,
         communications: false,
         benchmarking: false
+    }
+};
+
+// ===== SISTEMA DE GAMIFICACIÓN =====
+const achievements = {
+    "first_steps": { 
+        name: "Primeros Pasos", 
+        icon: "🚀", 
+        description: "Completaste tu primera categoría",
+        trigger: "complete_category_1" 
+    },
+    "momentum": { 
+        name: "Tomando Impulso", 
+        icon: "⚡", 
+        description: "3 categorías completadas, ¡vas genial!",
+        trigger: "complete_3_categories" 
+    },
+    "halfway_hero": { 
+        name: "Héroe a Mitad de Camino", 
+        icon: "🦸‍♂️", 
+        description: "50% completado, ¡imparable!",
+        trigger: "50_percent_complete" 
+    },
+    "perfectionist": { 
+        name: "Perfeccionista", 
+        icon: "💎", 
+        description: "Todas tus respuestas son de alto nivel",
+        trigger: "all_high_answers" 
+    },
+    "completion_champion": { 
+        name: "Campeón de Finalización", 
+        icon: "🏆", 
+        description: "¡Evaluación 100% completada!",
+        trigger: "100_percent_complete" 
+    },
+    "speed_demon": {
+        name: "Rayo Empresarial",
+        icon: "⚡",
+        description: "Completaste la evaluación en tiempo récord",
+        trigger: "fast_completion"
+    }
+};
+
+// Mensajes motivacionales por progreso
+const motivationalMessages = {
+    5: { emoji: "🌟", message: "¡Excelente comienzo! Ya tienes el 5% completado" },
+    10: { emoji: "🚀", message: "¡Fantástico! El 10% ya está listo" },
+    25: { emoji: "💪", message: "¡Vas súper bien! Un cuarto del camino recorrido" },
+    40: { emoji: "🔥", message: "¡Increíble momentum! Casi a la mitad" },
+    50: { emoji: "🎯", message: "¡Increíble! Ya estás a mitad del camino hacia tu diagnóstico" },
+    65: { emoji: "⭐", message: "¡Excelente progreso! Más de la mitad completada" },
+    75: { emoji: "💎", message: "¡Casi lo logras! Solo falta el 25% para tu reporte personalizado" },
+    85: { emoji: "🏆", message: "¡En la recta final! Tu reporte profesional te está esperando" },
+    90: { emoji: "🎉", message: "¡Último esfuerzo! Estás a punto de descubrir tu potencial" },
+    95: { emoji: "🌟", message: "¡Casi, casi! Tu diagnóstico personalizado está listo" }
+};
+
+// Estados emocionales del progreso
+const progressStates = {
+    0: { emoji: "😴", state: "Iniciando", color: "#94a3b8" },
+    20: { emoji: "😐", state: "Calentando", color: "#64748b" },
+    40: { emoji: "🙂", state: "Progresando", color: "#0ea5e9" },
+    60: { emoji: "😊", state: "Avanzando", color: "#8b5cf6" },
+    80: { emoji: "🤩", state: "Acelerando", color: "#f59e0b" },
+    100: { emoji: "🚀", state: "¡Completado!", color: "#10b981" }
+};rking: false
     }
 };
 
@@ -237,8 +304,46 @@ function showLoading(message = 'Procesando...') {
     const loader = document.getElementById('loader');
     const loaderText = document.getElementById('loader-text');
     if (loader && loaderText) {
-        loaderText.textContent = message;
-        loader.classList.remove('hidden');
+        loaderTe// ===== FUNCIONES DE REGISTRO =====
+function handleQuickStart(e) {
+    e.preventDefault();
+    
+    // Obtener datos básicos
+    const companyName = document.getElementById('quickCompanyName').value;
+    const email = document.getElementById('quickEmail').value;
+    
+    // Validar campos básicos
+    if (!companyName || !email) {
+        showToast('Por favor completa ambos campos', 'error');
+        return;
+    }
+    
+    // Guardar datos básicos
+    appState.companyData = {
+        name: companyName,
+        email: email,
+        // Valores por defecto que se completarán después
+        sector: 'Servicios',
+        size: 'Pequeña (11-50)',
+        years: '1-3 años',
+        location: 'Colombia',
+        city: 'Colombia'
+    };
+    
+    // Inicializar tiempo de inicio
+    appState.evaluationData.startTime = Date.now();
+    
+    // Mostrar mensaje motivacional y comenzar
+    showMotivationalToast('🚀', '¡Perfecto! Comencemos tu evaluación de madurez empresarial');
+    
+    setTimeout(() => {
+        autoSave();
+        showSection('evaluation');
+        initEvaluation();
+    }, 1000);
+}
+
+function handleRegistration(e) {
     }
 }
 
@@ -314,19 +419,7 @@ function renderCategoryProgress() {
                 <div style="flex: 1;">
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">${cat.name}</div>
                     <div style="font-size: 0.875rem; opacity: 0.7;">
-                        ${completedQuestions}/${cat.questions.length} preguntas
-                    </div>
-                </div>
-                ${isCompleted ? '<span style="color: var(--success-500);">✓</span>' : ''}
-            </div>
-        `;
-    }).join('');
-    
-    // Actualizar progreso general
-    updateOverallProgress();
-}
-
-function updateOverallProgress() {
+                        ${completedQuefunction updateOverallProgress() {
     const totalQuestions = categories.reduce((sum, cat) => sum + cat.questions.length, 0);
     const answeredQuestions = Object.keys(appState.evaluationData.answers).length;
     const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
@@ -341,6 +434,189 @@ function updateOverallProgress() {
     
     if (progressText) {
         const completedCategories = categories.filter(cat => 
+            cat.questions.every(q => appState.evaluationData.answers[q.id] !== undefined)
+        ).length;
+        progressText.textContent = `${completedCategories} de ${categories.length} categorías`;
+    }
+    
+    if (overallProgress) {
+        overallProgress.style.setProperty('--score', percentage);
+    }
+    
+    // Nuevas funciones de gamificación
+    checkMotivationalMessage(percentage);
+    updateEmotionalProgress(percentage);
+    checkAchievements(percentage, answeredQuestions);
+}
+
+// ===== SISTEMA DE GAMIFICACIÓN =====
+function checkMotivationalMessage(percentage) {
+    const message = motivationalMessages[percentage];
+    if (message && !appState.evaluationData.shownMessages?.includes(percentage)) {
+        showMotivationalToast(message.emoji, message.message);
+        
+        // Guardar que ya se mostró este mensaje
+        if (!appState.evaluationData.shownMessages) {
+            appState.evaluationData.shownMessages = [];
+        }
+        appState.evaluationData.shownMessages.push(percentage);
+        autoSave();
+    }
+}
+
+function showMotivationalToast(emoji, message) {
+    const toast = document.createElement('div');
+    toast.className = 'motivational-toast';
+    toast.innerHTML = `
+        <div class="toast-emoji">${emoji}</div>
+        <div class="toast-message">${message}</div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Animación de entrada
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    // Remover después de 4 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 4000);
+}
+
+function updateEmotionalProgress(percentage) {
+    const progressContainer = document.getElementById('globalProgressPercentage');
+    if (!progressContainer) return;
+    
+    // Encontrar el estado emocional actual
+    let currentState = progressStates[0];
+    for (let threshold of Object.keys(progressStates).sort((a, b) => b - a)) {
+        if (percentage >= parseInt(threshold)) {
+            currentState = progressStates[threshold];
+            break;
+        }
+    }
+    
+    // Actualizar la UI con el estado emocional
+    const emotionalIndicator = document.getElementById('emotionalIndicator');
+    if (emotionalIndicator) {
+        emotionalIndicator.innerHTML = `${currentState.emoji} ${currentState.state}`;
+        emotionalIndicator.style.color = currentState.color;
+    }
+}
+
+function checkAchievements(percentage, answeredQuestions) {
+    const completedCategories = categories.filter(cat => 
+        cat.questions.every(q => appState.evaluationData.answers[q.id] !== undefined)
+    ).length;
+    
+    // Verificar diferentes tipos de logros
+    if (completedCategories === 1 && !hasAchievement('first_steps')) {
+        unlockAchievement('first_steps');
+    }
+    
+    if (completedCategories === 3 && !hasAchievement('momentum')) {
+        unlockAchievement('momentum');
+    }
+    
+    if (percentage >= 50 && !hasAchievement('halfway_hero')) {
+        unlockAchievement('halfway_hero');
+    }
+    
+    if (percentage === 100 && !hasAchievement('completion_champion')) {
+        unlockAchievement('completion_champion');
+        celebrateCompletion();
+    }
+    
+    // Verificar perfeccionista (todas respuestas 4 o 5)
+    const highAnswers = Object.values(appState.evaluationData.answers).filter(answer => answer >= 3);
+    if (highAnswers.length >= 10 && highAnswers.length === answeredQuestions && !hasAchievement('perfectionist')) {
+        unlockAchievement('perfectionist');
+    }
+}
+
+function hasAchievement(achievementId) {
+    return appState.evaluationData.achievements.includes(achievementId);
+}
+
+function unlockAchievement(achievementId) {
+    const achievement = achievements[achievementId];
+    if (!achievement || hasAchievement(achievementId)) return;
+    
+    appState.evaluationData.achievements.push(achievementId);
+    showAchievementModal(achievement);
+    updateAchievementsCounter();
+    autoSave();
+}
+
+function updateAchievementsCounter() {
+    const achievementsCount = document.getElementById('achievementsCount');
+    if (achievementsCount) {
+        const totalAchievements = Object.keys(achievements).length;
+        const unlockedAchievements = appState.evaluationData.achievements.length;
+        achievementsCount.textContent = `${unlockedAchievements}/${totalAchievements}`;
+        
+        // Animación cuando se desbloquea un logro
+        if (unlockedAchievements > 0) {
+            achievementsCount.style.animation = 'achievementPulse 0.6s ease';
+            setTimeout(() => {
+                achievementsCount.style.animation = '';
+            }, 600);
+        }
+    }
+}
+
+function showAchievementModal(achievement) {
+    const modal = document.createElement('div');
+    modal.className = 'achievement-modal-overlay';
+    modal.innerHTML = `
+        <div class="achievement-modal">
+            <div class="confetti-container"></div>
+            <div class="achievement-icon">${achievement.icon}</div>
+            <h2>🎉 ¡Logro Desbloqueado!</h2>
+            <h3>${achievement.name}</h3>
+            <p>${achievement.description}</p>
+            <button class="btn btn-primary" onclick="closeAchievementModal()">¡Continuar!</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Crear efecto confetti
+    createConfetti();
+    
+    // Auto-cerrar después de 5 segundos si no se hace clic
+    setTimeout(() => {
+        if (document.body.contains(modal)) {
+            closeAchievementModal();
+        }
+    }, 5000);
+    
+    window.currentAchievementModal = modal;
+}
+
+function closeAchievementModal() {
+    const modal = window.currentAchievementModal;
+    if (modal && document.body.contains(modal)) {
+        modal.classList.add('closing');
+        setTimeout(() => document.body.removeChild(modal), 300);
+    }
+}
+
+function createConfetti() {
+    const colors = ['#8560C0', '#4CCED5', '#EE8028', '#10b981', '#f59e0b'];
+    const confettiContainer = document.querySelector('.confetti-container');
+    
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti-piece';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        confetti.style.animationDuration = (Math.random() * 2 + 1) + 's';
+        confettiContainer.appendChild(confetti);
+    }
+}ter(cat => 
             cat.questions.every(q => appState.evaluationData.answers[q.id] !== undefined)
         ).length;
         progressText.textContent = `${completedCategories} de ${categories.length} categorías`;
@@ -421,15 +697,16 @@ function renderCurrentQuestion() {
     const tooltipText = document.getElementById('tooltipText');
     
     if (categoryBadge) {
-        categoryBadge.textContent = `${category.icon} ${category.name}`;
+        categoryBadge.textContent = `${category.icon} ${cate    // Personalizar pregunta según sector
+    const personalizedQuestion = personalizeQuestionBySector(question);
+    
+    if (questionText) {
+        questionText.innerHTML = personalizedQuestion.text;
     }
     
-    if (categoryTitle) {
-        categoryTitle.textContent = category.name;
-    }
-    
-    if (categoryDescription) {
-        categoryDescription.textContent = category.description;
+    if (tooltipText) {
+        tooltipText.innerHTML = personalizedQuestion.tooltip;
+    }yDescription.textContent = category.description;
     }
     
     if (questionNumber) {
@@ -454,16 +731,6 @@ function renderCurrentQuestion() {
     updateNavigationButtons();
 }
 
-function updateCategoryProgressBar() {
-    const category = categories[appState.evaluationData.currentCategory];
-    const progress = ((appState.evaluationData.currentQuestion + 1) / category.questions.length) * 100;
-    const progressBar = document.getElementById('categoryProgressBar');
-    
-    if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-    }
-}
-
 function renderScaleOptionsImproved() {
     const scaleOptionsContainer = document.getElementById('scaleOptions');
     if (!scaleOptionsContainer) return;
@@ -477,42 +744,48 @@ function renderScaleOptionsImproved() {
             value: 0,
             emoji: '😟',
             label: 'Muy Bajo / No aplica',
-            description: 'No existe o no se implementa'
+            description: 'No existe o no se implementa',
+            color: '#ef4444'
         },
         {
             value: 1,
             emoji: '😐',
             label: 'Bajo / Iniciando',
-            description: 'En etapa muy temprana o informal'
+            description: 'En etapa muy temprana o informal',
+            color: '#f97316'
         },
         {
             value: 2,
             emoji: '🙂',
             label: 'Medio / En desarrollo',
-            description: 'Parcialmente implementado'
+            description: 'Parcialmente implementado',
+            color: '#eab308'
         },
         {
             value: 3,
             emoji: '😊',
             label: 'Alto / Bien implementado',
-            description: 'Bien establecido y funcional'
+            description: 'Bien establecido y funcional',
+            color: '#3b82f6'
         },
         {
             value: 4,
             emoji: '🌟',
             label: 'Muy Alto / Excelente',
-            description: 'Optimizado y en mejora continua'
+            description: 'Optimizado y en mejora continua',
+            color: '#10b981'
         }
     ];
     
     // Limpiar contenedor
     scaleOptionsContainer.innerHTML = '';
     
-    // Crear opciones mejoradas
-    optionData.forEach(option => {
+    // Crear opciones mejoradas con animación escalonada
+    optionData.forEach((option, index) => {
         const optionCard = document.createElement('div');
         optionCard.className = 'scale-option';
         optionCard.setAttribute('data-value', option.value);
+        optionCard.style.animationDelay = `${index * 0.1}s`;
         
         // Marcar como seleccionada si corresponde
         if (currentQuestion.answer === option.value) {
@@ -521,6 +794,131 @@ function renderScaleOptionsImproved() {
         
         optionCard.innerHTML = `
             <div class="option-icon">${option.emoji}</div>
+            <div class="option-number" style="background-color: ${option.color}">${option.value}</div>
+            <div class="option-label">${option.label}</div>
+            <div class="option-description">${option.description}</div>
+            <div class="option-pulse"></div>
+        `;
+        
+        // Event listener con animación mejorada
+        optionCard.addEventListener('click', function() {
+            selectOptionImproved(option.value, this, option.color);
+        });
+        
+        // Hover effect mejorado
+        optionCard.addEventListener('mouseenter', function() {
+            this.style.setProperty('--hover-color', option.color);
+        });
+        
+        scaleOptionsContainer.appendChild(optionCard);
+    });
+}
+
+// Función mejorada para seleccionar opción
+function selectOptionImproved(value, element, color) {
+    const currentQuestion = getCurrentQuestion();
+    if (!currentQuestion) return;
+    
+    // Guardar respuesta
+    currentQuestion.answer = value;
+    
+    // Remover selección anterior
+    document.querySelectorAll('.scale-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    
+    // Agregar selección a la nueva opción con efecto especial
+    element.classList.add('selected');
+    element.style.setProperty('--selected-color', color);
+    
+    // Crear efecto de ondas
+    createRippleEffect(element, color);
+    
+    // Mostrar feedback visual mejorado
+    showEnhancedFeedback(value, color);
+    
+    // Habilitar botón siguiente
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.classList.add('btn-ready');
+    }
+    
+    // Actualizar progreso global
+    updateGlobalProgress();
+    
+    // Guardar en localStorage
+    saveToLocalStorage();
+    
+    // Vibración sutil en móviles (si está disponible)
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+}
+
+function createRippleEffect(element, color) {
+    const ripple = document.createElement('div');
+    ripple.className = 'selection-ripple';
+    ripple.style.backgroundColor = color;
+    
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = '50%';
+    ripple.style.top = '50%';
+    ripple.style.transform = 'translate(-50%, -50%) scale(0)';
+    
+    element.appendChild(ripple);
+    
+    // Animar el ripple
+    setTimeout(() => {
+        ripple.style.transform = 'translate(-50%, -50%) scale(2)';
+        ripple.style.opacity = '0';
+    }, 10);
+    
+    // Remover después de la animación
+    setTimeout(() => {
+        if (element.contains(ripple)) {
+            element.removeChild(ripple);
+        }
+    }, 600);
+}
+
+function showEnhancedFeedback(value, color) {
+    const feedbackContainer = document.getElementById('selectedFeedback');
+    const feedbackMessage = document.getElementById('feedbackMessage');
+    
+    if (!feedbackContainer || !feedbackMessage) return;
+    
+    const messages = {
+        0: { text: '😟 Has seleccionado: Muy Bajo / No aplica', encouragement: 'Identificar áreas de mejora es el primer paso hacia el crecimiento' },
+        1: { text: '😐 Has seleccionado: Bajo / Iniciando', encouragement: 'Reconocer el punto de partida es clave para el progreso' },
+        2: { text: '🙂 Has seleccionado: Medio / En desarrollo', encouragement: 'Vas por buen camino, hay potencial de optimización' },
+        3: { text: '😊 Has seleccionado: Alto / Bien implementado', encouragement: '¡Excelente! Esta es una fortaleza de tu empresa' },
+        4: { text: '🌟 Has seleccionado: Muy Alto / Excelente', encouragement: '¡Impresionante! Eres un referente en esta área' }
+    };
+    
+    const message = messages[value];
+    
+    feedbackMessage.innerHTML = `
+        <div class="feedback-main" style="color: ${color}; font-weight: 600;">
+            ${message.text}
+        </div>
+        <div class="feedback-encouragement" style="color: var(--primary-700); font-size: 0.9rem; margin-top: 0.5rem;">
+            💡 ${message.encouragement}
+        </div>
+    `;
+    
+    feedbackContainer.classList.remove('hidden');
+    feedbackContainer.style.background = `linear-gradient(135deg, ${color}15, ${color}05)`;
+    feedbackContainer.style.border = `2px solid ${color}30`;
+    
+    // Animación de entrada mejorada
+    feedbackContainer.style.animation = 'none';
+    setTimeout(() => {
+        feedbackContainer.style.animation = 'feedbackSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+    }, 10);
+}on-icon">${option.emoji}</div>
             <div class="option-number">${option.value}</div>
             <div class="option-label">${option.label}</div>
             <div class="option-description">${option.description}</div>
@@ -669,24 +1067,162 @@ function updateNavigationButtons() {
                               appState.evaluationData.currentQuestion === category.questions.length - 1;
         
         if (isLastQuestion) {
-            btnNext.innerHTML = '✅ Finalizar Evaluación';
-        } else {
-            btnNext.innerHTML = 'Siguiente →';
+            btfunction nextQuestion() {
+    const category = categories[appState.evaluationData.currentCategory];
+    
+    if (appState.evaluationData.currentQuestion < category.questions.length - 1) {
+        appState.evaluationData.currentQuestion++;
+    } else if (appState.evaluationData.currentCategory < categories.length - 1) {
+        // Categoría completada - mostrar insight
+        showCategoryCompletionInsight(category);
+        
+        appState.evaluationData.currentCategory++;
+        appState.evaluationData.currentQuestion = 0;
+        
+        // Marcar categoría como completada
+        if (!appState.evaluationData.completedCategories.includes(category.id)) {
+            appState.evaluationData.completedCategories.push(category.id);
         }
-    }
-}
-
-function previousQuestion() {
-    if (appState.evaluationData.currentQuestion > 0) {
-        appState.evaluationData.currentQuestion--;
-    } else if (appState.evaluationData.currentCategory > 0) {
-        appState.evaluationData.currentCategory--;
-        appState.evaluationData.currentQuestion = 
-            categories[appState.evaluationData.currentCategory].questions.length - 1;
+    } else {
+        finishEvaluation();
+        return;
     }
     
     renderCategoryProgress();
     renderCurrentQuestion();
+    autoSave();
+    updateGlobalProgress();
+}
+
+// ===== INSIGHTS PARCIALES POR CATEGORÍA =====
+function showCategoryCompletionInsight(category) {
+    // Calcular puntuación de la categoría
+    let totalWeightedScore = 0;
+    let totalWeight = 0;
+    
+    category.questions.forEach(question => {
+        const answer = appState.evaluationData.answers[question.id] || 0;
+        const normalizedScore = (answer / 4) * 100;
+        totalWeightedScore += normalizedScore * question.weight;
+        totalWeight += question.weight;
+    });
+    
+    const categoryScore = Math.round(totalWeightedScore / totalWeight);
+    
+    // Obtener insight específico
+    const insight = getCategoryInsight(category.id, categoryScore);
+    
+    // Mostrar modal de insight
+    showInsightModal(category, categoryScore, insight);
+}
+
+function getCategoryInsight(categoryId, score) {
+    const insights = {
+        'vision_estrategia': {
+            high: {
+                title: "🎯 ¡Visión Estratégica Sólida!",
+                message: "Tu empresa tiene una dirección clara y bien definida. Esto es fundamental para el crecimiento sostenible.",
+                tip: "Mantén esta fortaleza y asegúrate de comunicar regularmente la visión a todo el equipo."
+            },
+            medium: {
+                title: "📈 Fundamento Estratégico en Desarrollo",
+                message: "Tienes una base estratégica decente con oportunidades claras de mejora.",
+                tip: "Considera documentar formalmente tu visión y crear un plan estratégico detallado."
+            },
+            low: {
+                title: "💡 Gran Oportunidad Estratégica",
+                message: "Aquí tienes el mayor potencial de crecimiento. Una estrategia clara puede transformar tu empresa.",
+                tip: "Prioriza definir tu visión, misión y objetivos estratégicos a 3-5 años."
+            }
+        },
+        'gobierno_empresarial': {
+            high: {
+                title: "🏛️ ¡Gobierno Corporativo Excelente!",
+                message: "Tu estructura organizacional y procesos de control están muy bien establecidos.",
+                tip: "Mantén estas buenas prácticas y considera certificaciones de gobierno corporativo."
+            },
+            medium: {
+                title: "⚖️ Estructura en Evolución",
+                message: "Tienes una base sólida de gobierno con espacio para optimización.",
+                tip: "Enfócate en documentar políticas clave y establecer comités de seguimiento."
+            },
+            low: {
+                title: "🔧 Oportunidad de Estructuración",
+                message: "Fortalecer tu gobierno corporativo puede mejorar significativamente la eficiencia.",
+                tip: "Comienza definiendo roles claros y estableciendo políticas básicas de operación."
+            }
+        },
+        'procesos_operaciones': {
+            high: {
+                title: "⚙️ ¡Operaciones Optimizadas!",
+                message: "Tus procesos están bien documentados y funcionan eficientemente.",
+                tip: "Continúa con la mejora continua e incorpora más automatización donde sea posible."
+            },
+            medium: {
+                title: "🔄 Procesos en Mejora",
+                message: "Tienes una base operacional decente con oportunidades de optimización.",
+                tip: "Mapea tus 5 procesos más críticos y busca eliminar cuellos de botella."
+            },
+            low: {
+                title: "🚀 Potencial de Eficiencia",
+                message: "Optimizar tus procesos puede generar ahorros significativos de tiempo y costos.",
+                tip: "Comienza documentando y estandarizando tus procesos más importantes."
+            }
+        }
+        // Agregar más categorías según sea necesario...
+    };
+    
+    const categoryInsights = insights[categoryId] || insights['vision_estrategia'];
+    
+    if (score >= 75) return categoryInsights.high;
+    if (score >= 40) return categoryInsights.medium;
+    return categoryInsights.low;
+}
+
+function showInsightModal(category, score, insight) {
+    const modal = document.createElement('div');
+    modal.className = 'insight-modal-overlay';
+    modal.innerHTML = `
+        <div class="insight-modal">
+            <div class="insight-header">
+                <div class="category-icon-large">${category.icon}</div>
+                <div class="insight-score">
+                    <div class="score-circle-small" style="--score: ${score}">
+                        <span class="score-number">${score}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="insight-content">
+                <h2>${insight.title}</h2>
+                <p class="insight-message">${insight.message}</p>
+                <div class="insight-tip">
+                    <strong>💡 Tip Personalizado:</strong>
+                    <p>${insight.tip}</p>
+                </div>
+            </div>
+            <div class="insight-footer">
+                <button class="btn btn-primary" onclick="closeInsightModal()">
+                    ✨ ¡Continuar Evaluación!
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Animación de entrada
+    setTimeout(() => modal.classList.add('show'), 100);
+    
+    window.currentInsightModal = modal;
+}
+
+function closeInsightModal() {
+    const modal = window.currentInsightModal;
+    if (modal && document.body.contains(modal)) {
+        modal.classList.add('closing');
+        setTimeout(() => document.body.removeChild(modal), 300);
+    }
+});
     autoSave();
     updateGlobalProgress();
 }
@@ -1888,15 +2424,107 @@ function initEventListeners() {
     // Enlace de política de privacidad
     const privacyLink = document.getElementById('privacyPolicyLink');
     if (privacyLink) {
-        privacyLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            showPrivacyPolicy();
-        });
+        privacyLink.addEven// ===== PERSONALIZACIÓN POR SECTOR =====
+const sectorAdaptations = {
+    'Tecnología': {
+        examples: 'como Slack, Zoom, GitHub o Jira',
+        focus: 'innovación, escalabilidad y agilidad',
+        pain_points: 'velocidad de desarrollo, retención de talento tech y competencia',
+        tools: 'herramientas de desarrollo, metodologías ágiles',
+        metrics: 'KPIs de desarrollo, time-to-market, uptime'
+    },
+    'Retail/Comercio': {
+        examples: 'como sistemas POS, e-commerce, CRM de ventas',
+        focus: 'experiencia del cliente, omnicanalidad y gestión de inventario',
+        pain_points: 'competencia online, gestión de stock y experiencia del cliente',
+        tools: 'sistemas de inventario, plataformas de e-commerce',
+        metrics: 'conversión, ticket promedio, rotación de inventario'
+    },
+    'Manufactura': {
+        examples: 'como ERP, sistemas de calidad, automatización',
+        focus: 'eficiencia operacional, calidad y optimización de procesos',
+        pain_points: 'costos de producción, calidad y tiempos de entrega',
+        tools: 'sistemas MES, control de calidad, automatización',
+        metrics: 'OEE, defectos por millón, tiempo de ciclo'
+    },
+    'Servicios': {
+        examples: 'como CRM, sistemas de facturación, gestión de proyectos',
+        focus: 'satisfacción del cliente, eficiencia y escalabilidad',
+        pain_points: 'gestión de clientes, escalabilidad y diferenciación',
+        tools: 'CRM, herramientas de gestión de proyectos',
+        metrics: 'NPS, utilización de recursos, margen por proyecto'
+    },
+    'Salud': {
+        examples: 'como historias clínicas digitales, telemedicina',
+        focus: 'calidad de atención, eficiencia y cumplimiento normativo',
+        pain_points: 'regulaciones, eficiencia operativa y experiencia del paciente',
+        tools: 'sistemas de gestión hospitalaria, telemedicina',
+        metrics: 'tiempo de atención, satisfacción del paciente, cumplimiento'
+    }
+};
+
+function personalizeQuestionBySector(question) {
+    const sector = appState.companyData.sector || 'Servicios';
+    const adaptation = sectorAdaptations[sector] || sectorAdaptations['Servicios'];
+    
+    let personalizedText = question.text;
+    let personalizedTooltip = question.tooltip;
+    
+    // Personalización específica por pregunta
+    if (question.id === 'et_01') {
+        personalizedText = `¿La infraestructura tecnológica actual (${adaptation.examples}) soporta las necesidades del negocio?`;
+        personalizedTooltip = `La tecnología debe ser un habilitador para ${adaptation.focus}. En ${sector}, esto incluye ${adaptation.examples}.`;
+    }
+    
+    if (question.id === 'po_02') {
+        per    // Formulario de inicio rápido
+    const quickStartForm = document.getElementById('quickStartForm');
+    if (quickStartForm) {
+        quickStartForm.addEventListener('submit', handleQuickStart);
     }
 
-    const btnClosePrivacy = document.getElementById('btnClosePrivacy');
-    if (btnClosePrivacy) {
-        btnClosePrivacy.addEventListener('click', hidePrivacyPolicy);
+    // Formulario de registro completo
+    const registrationForm = document.getElementById('registrationForm');
+    if (registrationForm) {
+        registrationForm.addEventListener('submit', handleRegistration);
+    } ${adaptation.focus}.`;
+    }
+    
+    if (question.id === 'in_03') {
+        personalizedText = `¿Se utilizan herramientas de visualización para monitorear métricas clave (${adaptation.metrics})?`;
+        personalizedTooltip = `Dashboards muestran ${adaptation.metrics} en tiempo real para optimizar ${adaptation.focus}.`;
+    }
+    
+    if (question.id === 'cx_01') {
+        personalizedTooltip = `En ${sector}, es crucial medir la satisfacción considerando ${adaptation.pain_points}.`;
+    }
+    
+    if (question.id === 'ia_01') {
+        personalizedTooltip = `Para ${sector}, la innovación debe enfocarse en ${adaptation.focus} y resolver ${adaptation.pain_points}.`;
+    }
+    
+    return {
+        text: personalizedText,
+        tooltip: personalizedTooltip
+    };
+}
+
+// Función auxiliar para obtener el objeto de pregunta actual
+function getCurrentQuestion() {
+    const category = categories[appState.evaluationData.currentCategory];
+    if (!category) return null;
+    
+    const question = category.questions[appState.evaluationData.currentQuestion];
+    if (!question) return null;
+    
+    // Agregar la respuesta actual si existe
+    question.answer = appState.evaluationData.answers[question.id];
+    
+    return question;
+}
+
+console.log('%c🚀 ForjaDigitalAE - Evaluación inicializada correctamente', 'color: #4CCED5; font-size: 16px; font-weight: bold;');
+console.log('%c📊 Versión: 5.0 - Gamificación Completa', 'color: #EE8028; font-size: 12px;')       btnClosePrivacy.addEventListener('click', hidePrivacyPolicy);
     }
 
     // Formulario de registro

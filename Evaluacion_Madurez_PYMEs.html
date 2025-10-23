@@ -177,26 +177,60 @@
                         <li>Cumplimiento contractual para prestación de servicios</li>
                     </ul>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="btnClosePrivacy">Entendido</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================
-         SECCIÓN 2: REGISTRO - FORMULARIO COMPLETO
+            <    <!-- ========================================
+         SECCIÓN 2: ONBOARDING SIMPLIFICADO
          ======================================== -->
     <section id="registration" class="section hidden">
         <div class="container">
-            <div class="card" style="max-width: 800px; margin: 0 auto;">
+            <!-- PASO 1: ONBOARDING RÁPIDO -->
+            <div class="card quick-start-card" id="quickStartCard" style="max-width: 600px; margin: 0 auto;">
+                <div class="card-body text-center">
+                    <div class="quick-start-icon">🚀</div>
+                    <h2 class="text-h2 mb-4">¡Empecemos! Solo 2 datos para comenzar</h2>
+                    <p class="text-body-lg mb-6">Te tomará menos de 15 minutos descubrir el potencial de tu empresa</p>
+                    
+                    <form id="quickStartForm" class="quick-start-form">
+                        <div class="form-group">
+                            <input type="text" 
+                                   class="form-input quick-input" 
+                                   id="quickCompanyName" 
+                                   name="companyName" 
+                                   placeholder="Nombre de tu empresa" 
+                                   required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <input type="email" 
+                                   class="form-input quick-input" 
+                                   id="quickEmail" 
+                                   name="email" 
+                                   placeholder="Tu email corporativo" 
+                                   required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-start-magic">
+                            ✨ Comenzar Evaluación
+                        </button>
+                        
+                        <p class="trust-signal">
+                            🔒 Completarás tu perfil durante la evaluación • 
+                            <span class="social-proof">👥 +2,847 empresarios ya mejoraron su PYME</span>
+                        </p>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- PASO 2: FORMULARIO COMPLETO (OCULTO INICIALMENTE) -->
+            <div class="card" id="fullRegistrationCard" style="max-width: 800px; margin: 0 auto; display: none;">
                 <div class="card-body">
                     <div class="text-center mb-6">
-                        <h2 class="text-h2 mb-4">¡Forja Tu Futuro AHORA!</h2>
-                        <p class="text-body-lg">Hablemos de tus metas. Un Forjador te contactará en <strong>menos de 2 horas</strong>.</p>
+                        <h2 class="text-h2 mb-4">¡Perfecto! Completemos tu perfil</h2>
+                        <p class="text-body-lg">Esto nos ayudará a personalizar tu reporte y recomendaciones</p>
                         <div class="progress-bar" style="margin-top: 1.5rem;">
                             <div class="progress-fill" style="width: 33%;"></div>
                         </div>
+                        <p class="text-body" style="opacity: 0.7; margin-top: 0.5rem;">Los campos marcados con (*) son obligatorios</p>
+                    </div>               </div>
                         <p class="text-body" style="opacity: 0.7; margin-top: 0.5rem;">Paso 1 de 3 - Los campos marcados con (*) son obligatorios</p>
                     </div>
 
@@ -572,20 +606,7 @@
                             <div class="score-circle" style="width: 120px; height: 120px; --score: 0;" id="overallProgress">
                                 <div class="score-text">
                                     <div class="score-number" style="font-size: 1.5rem;" id="progressPercentage">0%</div>
-                                    <div style="font-size: 0.75rem; opacity: 0.7;">Completado</div>
-                                </div>
-                            </div>
-                            <h3 class="text-h3">Tu Progreso</h3>
-                            <p class="text-body" style="opacity: 0.7;" id="progressText">0 de 10 categorías</p>
-                        </div>
-                        <div class="category-list" id="categoryProgress"></div>
-                    </div>
-                </div>
-
-                <!-- MAIN: Preguntas -->
-                <div class="card">
-                    <div class="card-body">
-                        <!-- BARRA DE PROGRESO GLOBAL MEJORADA -->
+                                    <div style="font-size: 0.75rem; opacity: 0                        <!-- BARRA DE PROGRESO GLOBAL MEJORADA -->
                         <div class="global-progress-container">
                             <div class="global-progress-header">
                                 <div class="progress-stats">
@@ -594,6 +615,25 @@
                                     <span class="progress-total" id="globalProgressTotal">50</span>
                                     <span class="progress-label">preguntas completadas</span>
                                 </div>
+                                <div class="progress-right">
+                                    <div class="emotional-progress">
+                                        <span id="emotionalIndicator">😴 Iniciando</span>
+                                    </div>
+                                    <div class="progress-percentage">
+                                        <span id="globalProgressPercentage">0</span>%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="global-progress-bar">
+                                <div class="global-progress-fill" id="globalProgressFill" style="width: 0%;">
+                                    <div class="progress-shine"></div>
+                                </div>
+                            </div>
+                            <div class="achievements-preview" id="achievementsPreview">
+                                <span class="achievements-label">🏆 Logros: </span>
+                                <span class="achievements-count" id="achievementsCount">0/6</span>
+                            </div>
+                        </div></div>
                                 <div class="progress-percentage">
                                     <span id="globalProgressPercentage">0</span>%
                                 </div>
