@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta name="referrer" content="no-referrer">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación de Madurez Empresarial - ForjaDigitalAE</title>
+    <meta name="description" content="Evalúa gratis el nivel de madurez de tu PYME. Recibe un reporte profesional con recomendaciones personalizadas en 15 minutos.">
+    
+    <!-- Librerías externas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- CSS Externo -->
+    <link rel="stylesheet" href="evaluacion-styles.css">
+</head>
+<body>
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 300px; text-align: center;">
+            <div class="modal-body">
+                <div class="spinner"></div>
+                <p class="text-body mt-4" id="loadingText">Guardando información...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         SECCIÓN 1: LANDING PAGE
+         ======================================== -->
+    <section id="landing">
+        <div class="contenedor-principal">
+            <div class="fondo-dinamico">
+                <div class="orbita orbita-1"><div class="punto-orbita punto-1"></div></div>
+                <div class="orbita orbita-2"><div class="punto-orbita punto-2"></div><div class="punto-orbita punto-3"></div></div>
+                <div class="linea-curva"></div>
+                <div class="linea-curva linea-curva-2"></div>
+            </div>
+
+            <div class="contenido-principal">
+                <img src="https://forjadigitalae.github.io/LOGO%20F_OSC.png" alt="ForjaDigitalAE Logo" class="logo">
+                <h1 class="titulo-principal">¿Qué tan digital es realmente tu PYME?</h1>
+                <p class="subtitulo">Descubre tu nivel de madurez digital en 15 minutos y recibe un reporte profesional con tu roadmap de transformación personalizado</p>
+                <button class="boton-principal" id="btnStartEvaluation">Evaluar mi PYME Gratis</button>
+            </div>
+
+            <div class="contenedor-tarjetas">
+                <div class="tarjeta-landing">
+                    <span class="icono-tarjeta">📊</span>
+                    <h3 class="titulo-tarjeta">Diagnóstico Completo</h3>
+                    <p class="texto-tarjeta">Evaluamos 10 dimensiones clave de la madurez de tu empresa</p>
+                </div>
+                <div class="tarjeta-landing">
+                    <span class="icono-tarjeta">🎯</span>
+                    <h3 class="titulo-tarjeta">Recomendaciones Específicas</h3>
+                    <p class="texto-tarjeta">Recibe un plan de acción personalizado con prioridades claras para tu sector</p>
+                </div>
+                <div class="tarjeta-landing">
+                    <span class="icono-tarjeta">📈</span>
+                    <h3 class="titulo-tarjeta">Comparación Sectorial</h3>
+                    <p class="texto-tarjeta">Descubre cómo te comparas con otras PYMEs de tu sector y región</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================
+         MODAL: CONSENTIMIENTO
+         ======================================== -->
+    <div id="consentModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent-purple);">🔒</div>
+                <h2 class="text-h2">Tus Datos Están Seguros Con Nosotros</h2>
+                <p class="text-body" style="opacity: 0.8; margin-top: 1rem;">
+                    En ForjaDigitalAE respetamos la privacidad de tu empresa. Para ofrecerte la mejor evaluación de madurez, necesitamos tu autorización para:
+                </p>
+            </div>
+            <div class="modal-body">
+                <div class="consent-section">
+                    <h3 style="color: var(--accent-purple); margin-bottom: 1rem;">✅ ESENCIAL PARA EL SERVICIO:</h3>
+                    <div class="consent-item essential">
+                        <input type="checkbox" class="consent-checkbox" checked disabled>
+                        <div>
+                            <strong>Almacenar datos de tu empresa para generar la evaluación</strong>
+                            <p style="font-size: 0.875rem; opacity: 0.7; margin-top: 0.25rem;">Se elimina automáticamente tras 90 días de inactividad</p>
+                        </div>
+                    </div>
+                    <div class="consent-item essential">
+                        <input type="checkbox" class="consent-checkbox" checked disabled>
+                        <div>
+                            <strong>Procesar tus respuestas para crear tu reporte personalizado</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="consent-section">
+                    <h3 style="color: var(--accent-orange); margin-bottom: 1rem;">🎯 MEJORA TU EXPERIENCIA (Opcional):</h3>
+                    <div class="consent-item">
+                        <input type="checkbox" class="consent-checkbox" id="consentCommunications">
+                        <div>
+                            <strong>Recibir consejos personalizados sobre transformación digital</strong>
+                        </div>
+                    </div>
+                    <div class="consent-item">
+                        <input type="checkbox" class="consent-checkbox" id="consentBenchmarking">
+                        <div>
+                            <strong>Participar en benchmarking anónimo sectorial</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: var(--primary-50); padding: 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
+                    <strong style="color: var(--accent-purple);">💡 TU MANTIENES EL CONTROL:</strong>
+                    <ul style="margin-top: 0.5rem; padding-left: 1rem;">
+                        <li>Puedes retirar tu consentimiento en cualquier momento</li>
+                        <li>Tus datos nunca se venden a terceros</li>
+                        <li>Eliminamos tus datos cuando lo solicites</li>
+                    </ul>
+                    <p class="mt-2">Puedes consultar nuestra <span class="policy-link" id="privacyPolicyLink">Política de Privacidad completa</span> para más información.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="btnCancelConsent">No acepto</button>
+                <button class="btn btn-primary" id="btnAcceptConsent">Acepto y Continúo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         MODAL: POLÍTICA DE PRIVACIDAD
+         ======================================== -->
+    <div id="privacyPolicyModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="text-h2">Política de Privacidad y Gestión de Datos</h2>
+            </div>
+            <div class="modal-body">
+                <div style="max-height: 60vh; overflow-y: auto;">
+                    <h3>Política de Privacidad</h3>
+                    <p><strong>1. Información que recopilamos</strong><br>
+                    En ForjaDigitalAE recopilamos información que usted nos proporciona directamente cuando completa formularios de contacto o evaluaciones, se suscribe a nuestros servicios, participa en evaluaciones de madurez empresarial, o se comunica con nosotros por email o WhatsApp.</p>
+                    
+                    <p><strong>2. Uso de la información</strong><br>
+                    Utilizamos su información para proporcionar nuestros servicios de consultoría, generar reportes personalizados de evaluación, comunicarnos sobre nuestros servicios, y mejorar nuestros servicios y experiencia del usuario.</p>
+                    
+                    <p><strong>3. Protección de datos</strong><br>
+                    Implementamos medidas de seguridad técnicas y organizacionales para proteger su información personal contra acceso no autorizado, alteración, divulgación o destrucción.</p>
+                    
+                    <p><strong>4. Sus derechos</strong><br>
+                    Usted tiene derecho a acceder, rectificar, actualizar o solicitar la eliminación de su información personal contactándonos en forjadigitalae@gmail.com</p>
+                    
+                    <h3>Política de Gestión de Datos</h3>
+                    <p><strong>Recopilación de Datos</strong><br>
+                    ForjaDigitalAE recopila y procesa datos personales únicamente para fines legítimos relacionados con nuestros servicios de consultoría empresarial.</p>
+                    
+                    <p><strong>Tipos de datos que procesamos:</strong></p>
+                    <ul>
+                        <li>Datos de identificación: Nombre, email, teléfono, empresa</li>
+                        <li>Datos empresariales: Información sobre su empresa para evaluaciones</li>
+                        <li>Datos de navegación: Cookies técnicas para mejorar la experiencia</li>
+                    </ul>
+                    
+                    <p><strong>Base legal para el procesamiento:</strong></p>
+                    <ul>
+                        <li>Consentimiento explícito para evaluaciones y comunicaciones</li>
+                        <li>Interés legítimo para mejorar nuestros servicios</li>
+                        <li>Cumplimiento contractual para prestación de servicios</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btnClosePrivacy">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         SECCIÓN 2: REGISTRO - FORMULARIO COMPLETO
+         ======================================== -->
+    <section id="registration" class="section hidden">
+        <div class="container">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-body">
+                    <div class="text-center mb-6">
+                        <h2 class="text-h2 mb-4">¡Forja Tu Futuro AHORA!</h2>
+                        <p class="text-body-lg">Hablemos de tus metas. Un Forjador te contactará en <strong>menos de 2 horas</strong>.</p>
+                        <div class="progress-bar" style="margin-top: 1.5rem;">
+                            <div class="progress-fill" style="width: 33%;"></div>
+                        </div>
+                        <p class="text-body" style="opacity: 0.7; margin-top: 0.5rem;">Paso 1 de 3 - Los campos marcados con (*) son obligatorios</p>
+                    </div>
+
+
+                    <!-- 1. INFORMACIÓN DE LA EMPRESA -->    
+                    <form id="registrationForm" class="registration-form-complete">
+                        <!-- 1. INFORMACIÓN DE LA EMPRESA -->
+                        <div class="form-section">
+                            <h3 class="form-section-title"><i class="fas fa-building"></i> 1. Información de la Empresa</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Nombre de la Empresa *</label>
+                                    <input type="text" 
+                                           class="form-input" 
+                                           id="companyName" 
+                                           name="companyName" 
+                                           placeholder="Ej: TechStart SAS" 
+                                           required>
+                                </div>
+                            </div>
+
+                            <div class="form-row form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label">Sector Económico *</label>
+                                    <select class="form-select" 
+                                            id="companySector" 
+                                            name="sector" 
+                                            required>
+                                        <option value="">Selecciona tu sector</option>
+                                        <option value="Tecnología">Tecnología</option>
+                                        <option value="Retail/Comercio">Retail/Comercio</option>
+                                        <option value="Manufactura">Manufactura</option>
+                                        <option value="Servicios">Servicios</option>
+                                        <option value="Salud">Salud</option>
+                                        <option value="Educación">Educación</option>
+                                        <option value="Construcción">Construcción</option>
+                                        <option value="Alimentos">Alimentos</option>
+                                        <option value="Logística">Logística</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Número de Empleados *</label>
+                                    <select class="form-select" 
+                                            id="companySize" 
+                                            name="size" 
+                                            required>
+                                        <option value="">Selecciona cantidad</option>
+                                        <option value="Micro (1-10)">Micro (1-10 Empleados)</option>
+                                        <option value="Pequeña (11-50)">Pequeña (11-50 Empleados)</option>
+                                        <option value="Mediana (51-200)">Mediana (51-200 Empleados)</option>
+                                        <option value="Grande (201-500)">Grande (201-500 Empleados)</option>
+                                        <option value="Corporación (500+)">Corporación (500+ Empleados)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label">Años en operación *</label>
+                                    <select class="form-select" 
+                                            id="companyYears" 
+                                            name="years" 
+                                            required>
+                                        <option value="">Selecciona años</option>
+                                        <option value="Menos de 1 año">Menos de 1 año</option>
+                                        <option value="1-3 años">1-3 años</option>
+                                        <option value="4-7 años">4-7 años</option>
+                                        <option value="8-15 años">8-15 años</option>
+                                        <option value="15+ años">15+ años</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Ubicación * (Ciudad, País)</label>
+                                    <input type="text" 
+                                           class="form-input" 
+                                           id="companyLocation" 
+                                           name="location" 
+                                           placeholder="Ej: Bogotá, Colombia" 
+                                           required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Sitio Web actual (Opcional)</label>
+                                    <input type="url" 
+                                           class="form-input" 
+                                           id="companyWebsite" 
+                                           name="website" 
+                                           placeholder="https://www.tuempresa.com">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. DESAFÍO PRINCIPAL -->
+                        <div class="form-section">
+                            <h3 class="form-section-title"><i class="fas fa-exclamation-triangle"></i> 2. Tu Principal Desafío *</h3>
+                            <p class="form-section-subtitle">¿Cuál es tu principal desafío empresarial? (Selección múltiple)</p>
+                            
+                            <div class="checkbox-grid">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Escalabilidad">
+                                    <span>Escalabilidad (no puedo crecer más)</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Procesos ineficientes">
+                                    <span>Procesos ineficientes</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Tecnología desactualizada">
+                                    <span>Tecnología desactualizada</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Dependencia del fundador">
+                                    <span>Dependencia del fundador</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Falta de automatización">
+                                    <span>Falta de automatización</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Mala experiencia del cliente">
+                                    <span>Mala experiencia del cliente</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Equipo desmotivado">
+                                    <span>Equipo desmotivado</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Crecimiento estancado">
+                                    <span>Crecimiento estancado</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Competencia agresiva">
+                                    <span>Competencia agresiva</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Gestión financiera deficiente">
+                                    <span>Gestión financiera deficiente</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Marketing inefectivo">
+                                    <span>Marketing inefectivo</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="desafio" value="Otro">
+                                    <span>Otro</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 3. OBJETIVO PRINCIPAL -->
+                        <div class="form-section">
+                            <h3 class="form-section-title"><i class="fas fa-bullseye"></i> 3. Objetivo Principal</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">¿Qué objetivo quieres lograr con ForjaDigitalAE? *</label>
+                                    <textarea class="form-input" 
+                                              id="objetivo" 
+                                              name="objetivo" 
+                                              rows="3" 
+                                              placeholder="Ej: Quiero reducir costos operativos en un 20% y aumentar capacidad sin contratar..." 
+                                              required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Plazo esperado para ver resultados</label>
+                                    <select class="form-select" 
+                                            id="plazoResultados" 
+                                            name="plazo">
+                                        <option value="">Selecciona plazo</option>
+                                        <option value="Inmediato">Inmediato</option>
+                                        <option value="1-3 meses">1-3 meses</option>
+                                        <option value="3-6 meses">3-6 meses</option>
+                                        <option value="6-12 meses">6-12 meses</option>
+                                        <option value="+1 año">+1 año</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. DATOS DE CONTACTO -->
+                        <div class="form-section">
+                            <h3 class="form-section-title"><i class="fas fa-user-tie"></i> 4. Datos de Contacto</h3>
+                            
+                            <div class="form-row form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label">Nombre completo del contacto *</label>
+                                    <input type="text" 
+                                           class="form-input" 
+                                           id="contactName" 
+                                           name="contactName" 
+                                           placeholder="Tu nombre completo" 
+                                           required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Cargo *</label>
+                                    <select class="form-select" 
+                                            id="contactRole" 
+                                            name="role" 
+                                            required>
+                                        <option value="">Selecciona tu cargo</option>
+                                        <option value="CEO/Founder">CEO/Founder</option>
+                                        <option value="Gerente/Director">Gerente/Director</option>
+                                        <option value="Líder de área">Líder de área</option>
+                                        <option value="Emprendedor">Emprendedor</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label">Email corporativo *</label>
+                                    <input type="email" 
+                                           class="form-input" 
+                                           id="contactEmail" 
+                                           name="email" 
+                                           placeholder="correo@empresa.com" 
+                                           required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Teléfono / WhatsApp *</label>
+                                    <input type="tel" 
+                                           class="form-input" 
+                                           id="contactPhone" 
+                                           name="phone" 
+                                           placeholder="+57 300 123 4567" 
+                                           required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Mejor horario para contactar</label>
+                                    <select class="form-select" 
+                                            id="horarioContacto" 
+                                            name="horario">
+                                        <option value="">Selecciona horario (opcional)</option>
+                                        <option value="Mañana">Mañana</option>
+                                        <option value="Tarde">Tarde</option>
+                                        <option value="Noche">Noche</option>
+                                        <option value="Flexible">Flexible</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. INFORMACIÓN ADICIONAL -->
+                        <div class="form-section">
+                            <h3 class="form-section-title"><i class="fas fa-lightbulb"></i> 5. Información Adicional y Segmentación</h3>
+                            
+                            <div class="form-row form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label">¿Cómo nos conociste?</label>
+                                    <select class="form-select" 
+                                            id="comoConocio" 
+                                            name="conocimiento">
+                                        <option value="">Selecciona</option>
+                                        <option value="Google">Google</option>
+                                        <option value="LinkedIn">LinkedIn</option>
+                                        <option value="Recomendación">Recomendación</option>
+                                        <option value="Redes Sociales">Redes Sociales</option>
+                                        <option value="Evento">Evento</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Presupuesto estimado para el proyecto</label>
+                                    <select class="form-select" 
+                                            id="presupuesto" 
+                                            name="presupuesto">
+                                        <option value="">Selecciona rango</option>
+                                        <option value="Menos de $5K">Menos de $5K USD</option>
+                                        <option value="$5K-$15K">$5K-$15K USD</option>
+                                        <option value="$15K-$30K">$15K-$30K USD</option>
+                                        <option value="$30K-$50K">$30K-$50K USD</option>
+                                        <option value="$50K+">$50K+ USD</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row form-row-3">
+                                <div class="form-group">
+                                    <label class="form-label">¿Tienes equipo técnico interno?</label>
+                                    <select class="form-select" 
+                                            id="equipoTecnico" 
+                                            name="equipoTecnico">
+                                        <option value="">Selecciona</option>
+                                        <option value="Sí">Sí</option>
+                                        <option value="No">No</option>
+                                        <option value="Parcialmente">Parcialmente</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Nivel de urgencia (Escala 1-5)</label>
+                                    <select class="form-select" 
+                                            id="urgencia" 
+                                            name="urgencia">
+                                        <option value="">Selecciona</option>
+                                        <option value="1">1 (Baja)</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3 (Media)</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5 (Alta)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Área que más duele</label>
+                                    <select class="form-select" 
+                                            id="areaDolor" 
+                                            name="areaDolor">
+                                        <option value="">Selecciona</option>
+                                        <option value="Ventas">Ventas</option>
+                                        <option value="Operaciones">Operaciones</option>
+                                        <option value="Tecnología">Tecnología</option>
+                                        <option value="Marketing">Marketing</option>
+                                        <option value="Finanzas">Finanzas</option>
+                                        <option value="Talento">Talento</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TÉRMINOS Y CONDICIONES -->
+                        <div class="form-section">
+                            <div class="consent-checkbox-wrapper">
+                                <input type="checkbox" id="terminos" name="terminos" required>
+                                <label for="terminos">
+                                    Acepto la <span class="policy-link" onclick="showPrivacyPolicy()">Política de Privacidad</span> y autorizo el tratamiento de mis datos.
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- BOTÓN SUBMIT -->
+                        <button type="submit" class="btn btn-primary btn-submit-full">
+                            <i class="fas fa-paper-plane"></i>
+                            ENVIAR INFORMACIÓN
+                        </button>
+
+                        <p class="form-footer-note">
+                            <i class="fas fa-shield-alt"></i>
+                            Tus datos están 100% protegidos
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================
+         SECCIÓN 3: EVALUACIÓN
+         ======================================== -->
+    <section id="evaluation" class="section hidden">
+        <div class="container">
+            <div class="evaluation-grid">
+                <!-- SIDEBAR: Progreso -->
+                <div class="card evaluation-sidebar">
+                    <div class="card-body">
+                        <div class="text-center mb-6">
+                            <div class="score-circle" style="width: 120px; height: 120px; --score: 0;" id="overallProgress">
+                                <div class="score-text">
+                                    <div class="score-number" style="font-size: 1.5rem;" id="progressPercentage">0%</div>
+                                    <div style="font-size: 0.75rem; opacity: 0.7;">Completado</div>
+                                </div>
+                            </div>
+                            <h3 class="text-h3">Tu Progreso</h3>
+                            <p class="text-body" style="opacity: 0.7;" id="progressText">0 de 10 categorías</p>
+                        </div>
+                        <div class="category-list" id="categoryProgress"></div>
+                    </div>
+                </div>
+
+                <!-- MAIN: Preguntas -->
+                <div class="card">
+                    <div class="card-body">
+                        <!-- BARRA DE PROGRESO GLOBAL MEJORADA -->
+                        <div class="global-progress-container">
+                            <div class="global-progress-header">
+                                <div class="progress-stats">
+                                    <span class="progress-current" id="globalProgressCurrent">0</span>
+                                    <span class="progress-separator">/</span>
+                                    <span class="progress-total" id="globalProgressTotal">50</span>
+                                    <span class="progress-label">preguntas completadas</span>
+                                </div>
+                                <div class="progress-percentage">
+                                    <span id="globalProgressPercentage">0</span>%
+                                </div>
+                            </div>
+                            <div class="global-progress-bar">
+                                <div class="global-progress-fill" id="globalProgressFill" style="width: 0%;">
+                                    <div class="progress-shine"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="categoryHeader" class="mb-6">
+                            <div class="category-badge" id="categoryBadge"></div>
+                            <h1 class="text-h1 mb-4" id="categoryTitle"></h1>
+                            <p class="text-body-lg" style="opacity: 0.8;" id="categoryDescription"></p>
+                            <div class="progress-bar mt-4">
+                                <div class="progress-fill" id="categoryProgressBar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <div id="questionCard" class="fade-in">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <div class="question-badge" id="questionNumber"></div>
+                                </div>
+                            </div>
+                            <h3 class="text-h3 mb-6" id="questionText" style="line-height: 1.5;"></h3>
+                            <div id="tooltipBox" class="tooltip-container">
+                                <p id="tooltipText" style="margin: 0;"></p>
+                            </div>
+                            <div class="scale-options" id="scaleOptions"></div>
+                            <div id="selectedFeedback" class="hidden text-center mt-4">
+                                <div id="feedbackMessage" class="feedback-message"></div>
+                            </div>
+                            <div class="flex justify-between mt-8">
+                                <button id="prevBtn" class="btn btn-outline" disabled>← Anterior</button>
+                                <button id="nextBtn" class="btn btn-primary" disabled>Siguiente →</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================
+         SECCIÓN 4: RESULTADOS
+         ======================================== -->
+    <section id="results" class="section hidden">
+        <div class="container">
+            <div class="text-center mb-8">
+                <h1 class="text-h1 mb-4">🎉 ¡Felicitaciones! Tu Evaluación Está Completa</h1>
+                <p class="text-body-lg" style="opacity: 0.8;">Aquí están los resultados de tu nivel de madurez empresarial</p>
+            </div>
+            
+            <div class="results-main-grid">
+                <!-- Score Principal -->
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="score-circle" style="--score: 0;" id="finalScore">
+                            <div class="score-text">
+                                <div class="score-number" id="finalScoreNumber">0</div>
+                                <div style="font-size: 0.875rem; opacity: 0.7;">Puntuación</div>
+                            </div>
+                        </div>
+                        <div id="maturityBadge" class="maturity-badge"></div>
+                        <p id="maturityDescription" style="opacity: 0.8;"></p>
+                        <button class="btn btn-primary" id="btnDownloadPDF" style="width: 100%; margin-top: 2rem;">
+                            📄 Descargar Reporte PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Radar Chart -->
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="text-h3 mb-4">Tu Perfil de Madurez</h3>
+                        <div class="chart-container"><canvas id="radarChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultados Detallados -->
+            <div class="card mt-8">
+                <div class="card-body">
+                    <h2 class="text-h2 mb-6">📊 Resultados Detallados por Eje</h2>
+                    <div id="detailedResults" class="detailed-results-grid"></div>
+                </div>
+            </div>
+
+            <!-- Recomendaciones -->
+            <div class="card mt-8">
+                <div class="card-body">
+                    <h2 class="text-h2 mb-6">🎯 Tus Recomendaciones Personalizadas</h2>
+                    <div class="recommendation-grid" id="recommendations"></div>
+                </div>
+            </div>
+
+            <!-- CTA Final -->
+            <div class="card mt-8 cta-final-card">
+                <div class="card-body text-center">
+                    <h2 class="text-h2 mb-4">🚀 ¿Listo para transformar tu PYME?</h2>
+                    <p class="text-body-lg mb-6">En ForjaDigitalAE te ayudamos a implementar estas recomendaciones con un plan personalizado</p>
+                    <div class="next-steps-buttons">
+                        <button class="btn btn-cta-white">📞 Agendar Consulta Gratuita</button>
+                        <button class="btn btn-cta-outline">📧 Recibir Más Información</button>
+                        <button class="btn btn-secondary" id="btnResetApp">← Volver al Inicio</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- JavaScript Externo -->
+    <script src="evaluacion-script.js"></script>
+</body>
+</html>
