@@ -433,6 +433,20 @@ function handleRegistration(e) {
     }, 1000);
 }
 
+// ===== FUNCIONES AUXILIARES =====
+function getCurrentQuestion() {
+    const category = categories[appState.evaluationData.currentCategory];
+    if (!category) return null;
+    
+    const question = category.questions[appState.evaluationData.currentQuestion];
+    if (!question) return null;
+    
+    // Agregar la respuesta actual si existe
+    question.answer = appState.evaluationData.answers[question.id];
+    
+    return question;
+}
+
 // ===== FUNCIONES DE EVALUACIÓN =====
 function initEvaluation() {
     appState.evaluationData.currentCategory = 0;
@@ -1202,19 +1216,7 @@ function personalizeQuestionBySector(question) {
     };
 }
 
-// Función auxiliar para obtener el objeto de pregunta actual
-function getCurrentQuestion() {
-    const category = categories[appState.evaluationData.currentCategory];
-    if (!category) return null;
-    
-    const question = category.questions[appState.evaluationData.currentQuestion];
-    if (!question) return null;
-    
-    // Agregar la respuesta actual si existe
-    question.answer = appState.evaluationData.answers[question.id];
-    
-    return question;
-}
+// Función getCurrentQuestion ya definida arriba
 
 // ===== FINALIZACIÓN Y RESULTADOS =====
 function finishEvaluation() {
