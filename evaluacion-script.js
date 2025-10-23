@@ -1,10 +1,12 @@
 /* ================================
    FORJADIGITALAE - EVALUACIÓN JS
-   Versión Optimizada y Modular
+   Versión Corregida y Optimizada
    ================================ */
 
 // ===== CONFIGURACIÓN GLOBAL =====
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxV6oR9z1Px-YnlbZXR-rJ04Kz-6g7A6DLMDGwg9E460EGuBnS2X5TEcScXtXN0zCrVqA/ex// ===== ESTADO DE LA APLICACIÓN =====
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxV6oR9z1Px-YnlbZXR-rJ04Kz-6g7A6DLMDGwg9E460EGuBnS2X5TEcScXtXN0zCrVqA/exec';
+
+// ===== ESTADO DE LA APLICACIÓN =====
 let appState = {
     currentSection: 'landing',
     companyData: {},
@@ -15,7 +17,8 @@ let appState = {
         categoryScores: {},
         achievements: [],
         startTime: null,
-        completedCategories: []
+        completedCategories: [],
+        shownMessages: []
     },
     consent: {
         essential: true,
@@ -86,8 +89,6 @@ const progressStates = {
     60: { emoji: "😊", state: "Avanzando", color: "#8b5cf6" },
     80: { emoji: "🤩", state: "Acelerando", color: "#f59e0b" },
     100: { emoji: "🚀", state: "¡Completado!", color: "#10b981" }
-};rking: false
-    }
 };
 
 // ===== CATEGORÍAS DE EVALUACIÓN =====
@@ -244,6 +245,45 @@ const scaleLabels = [
 
 const scaleColors = ['#AA2F0C', '#EC8E48', '#EE8028', '#4CCED5', '#10b981'];
 
+// ===== PERSONALIZACIÓN POR SECTOR =====
+const sectorAdaptations = {
+    'Tecnología': {
+        examples: 'como Slack, Zoom, GitHub o Jira',
+        focus: 'innovación, escalabilidad y agilidad',
+        pain_points: 'velocidad de desarrollo, retención de talento tech y competencia',
+        tools: 'herramientas de desarrollo, metodologías ágiles',
+        metrics: 'KPIs de desarrollo, time-to-market, uptime'
+    },
+    'Retail/Comercio': {
+        examples: 'como sistemas POS, e-commerce, CRM de ventas',
+        focus: 'experiencia del cliente, omnicanalidad y gestión de inventario',
+        pain_points: 'competencia online, gestión de stock y experiencia del cliente',
+        tools: 'sistemas de inventario, plataformas de e-commerce',
+        metrics: 'conversión, ticket promedio, rotación de inventario'
+    },
+    'Manufactura': {
+        examples: 'como ERP, sistemas de calidad, automatización',
+        focus: 'eficiencia operacional, calidad y optimización de procesos',
+        pain_points: 'costos de producción, calidad y tiempos de entrega',
+        tools: 'sistemas MES, control de calidad, automatización',
+        metrics: 'OEE, defectos por millón, tiempo de ciclo'
+    },
+    'Servicios': {
+        examples: 'como CRM, sistemas de facturación, gestión de proyectos',
+        focus: 'satisfacción del cliente, eficiencia y escalabilidad',
+        pain_points: 'gestión de clientes, escalabilidad y diferenciación',
+        tools: 'CRM, herramientas de gestión de proyectos',
+        metrics: 'NPS, utilización de recursos, margen por proyecto'
+    },
+    'Salud': {
+        examples: 'como historias clínicas digitales, telemedicina',
+        focus: 'calidad de atención, eficiencia y cumplimiento normativo',
+        pain_points: 'regulaciones, eficiencia operativa y experiencia del paciente',
+        tools: 'sistemas de gestión hospitalaria, telemedicina',
+        metrics: 'tiempo de atención, satisfacción del paciente, cumplimiento'
+    }
+};
+
 // ===== FUNCIONES DE UI =====
 function showSection(sectionId) {
     document.querySelectorAll('section').forEach(section => section.classList.add('hidden'));
@@ -301,10 +341,22 @@ function showToast(message, type = 'success') {
 }
 
 function showLoading(message = 'Procesando...') {
-    const loader = document.getElementById('loader');
-    const loaderText = document.getElementById('loader-text');
+    const loader = document.getElementById('loadingOverlay');
+    const loaderText = document.getElementById('loadingText');
     if (loader && loaderText) {
-        loaderTe// ===== FUNCIONES DE REGISTRO =====
+        loaderText.textContent = message;
+        loader.classList.remove('hidden');
+    }
+}
+
+function hideLoading() {
+    const loader = document.getElementById('loadingOverlay');
+    if (loader) {
+        loader.classList.add('hidden');
+    }
+}
+
+// ===== FUNCIONES DE REGISTRO =====
 function handleQuickStart(e) {
     e.preventDefault();
     
@@ -343,18 +395,6 @@ function handleQuickStart(e) {
     }, 1000);
 }
 
-function handleRegistration(e) {
-    }
-}
-
-function hideLoading() {
-    const loader = document.getElementById('loader');
-    if (loader) {
-        loader.classList.add('hidden');
-    }
-}
-
-// ===== FUNCIONES DE REGISTRO =====
 function handleRegistration(e) {
     e.preventDefault();
     
@@ -399,6 +439,8 @@ function initEvaluation() {
     appState.evaluationData.currentQuestion = 0;
     renderCategoryProgress();
     renderCurrentQuestion();
+    updateGlobalProgress();
+    updateAchievementsCounter();
 }
 
 function renderCategoryProgress() {
@@ -419,7 +461,19 @@ function renderCategoryProgress() {
                 <div style="flex: 1;">
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">${cat.name}</div>
                     <div style="font-size: 0.875rem; opacity: 0.7;">
-                        ${completedQuefunction updateOverallProgress() {
+                        ${completedQuestions}/${cat.questions.length} preguntas
+                    </div>
+                </div>
+                ${isCompleted ? '<span style="color: var(--success-500);">✓</span>' : ''}
+            </div>
+        `;
+    }).join('');
+    
+    // Actualizar progreso general
+    updateOverallProgress();
+}
+
+function updateOverallProgress() {
     const totalQuestions = categories.reduce((sum, cat) => sum + cat.questions.length, 0);
     const answeredQuestions = Object.keys(appState.evaluationData.answers).length;
     const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
@@ -447,6 +501,367 @@ function renderCategoryProgress() {
     checkMotivationalMessage(percentage);
     updateEmotionalProgress(percentage);
     checkAchievements(percentage, answeredQuestions);
+}
+
+function updateGlobalProgress() {
+    // Calcular total de preguntas respondidas
+    const totalQuestions = categories.reduce((sum, cat) => sum + cat.questions.length, 0);
+    const answeredQuestions = Object.keys(appState.evaluationData.answers).length;
+    const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
+    
+    // Actualizar elementos del DOM
+    const currentEl = document.getElementById('globalProgressCurrent');
+    const totalEl = document.getElementById('globalProgressTotal');
+    const percentageEl = document.getElementById('globalProgressPercentage');
+    const fillEl = document.getElementById('globalProgressFill');
+    
+    if (currentEl) currentEl.textContent = answeredQuestions;
+    if (totalEl) totalEl.textContent = totalQuestions;
+    if (percentageEl) percentageEl.textContent = percentage;
+    
+    if (fillEl) {
+        // Agregar clase para animación de "bump"
+        fillEl.classList.add('progress-bump');
+        setTimeout(() => fillEl.classList.remove('progress-bump'), 600);
+        
+        // Actualizar ancho con animación
+        fillEl.style.width = `${percentage}%`;
+        
+        // Celebración al llegar al 100%
+        if (percentage === 100) {
+            celebrateCompletion();
+        }
+    }
+    
+    // Actualizar estado emocional
+    updateEmotionalProgress(percentage);
+    
+    // Verificar mensajes motivacionales
+    checkMotivationalMessage(percentage);
+    
+    // Verificar logros
+    checkAchievements(percentage, answeredQuestions);
+}
+
+function renderCurrentQuestion() {
+    const category = categories[appState.evaluationData.currentCategory];
+    const question = category.questions[appState.evaluationData.currentQuestion];
+    
+    // Personalizar pregunta según sector
+    const personalizedQuestion = personalizeQuestionBySector(question);
+    
+    // Actualizar información de categoría
+    const categoryBadge = document.getElementById('categoryBadge');
+    const categoryTitle = document.getElementById('categoryTitle');
+    const categoryDescription = document.getElementById('categoryDescription');
+    const questionNumber = document.getElementById('questionNumber');
+    const questionText = document.getElementById('questionText');
+    const tooltipText = document.getElementById('tooltipText');
+    
+    if (categoryBadge) {
+        categoryBadge.textContent = `${category.icon} ${category.name}`;
+    }
+    
+    if (categoryTitle) {
+        categoryTitle.textContent = category.name;
+    }
+    
+    if (categoryDescription) {
+        categoryDescription.textContent = category.description;
+    }
+    
+    if (questionNumber) {
+        questionNumber.textContent = `Pregunta ${appState.evaluationData.currentQuestion + 1} de ${category.questions.length}`;
+    }
+    
+    if (questionText) {
+        questionText.innerHTML = personalizedQuestion.text;
+    }
+    
+    if (tooltipText) {
+        tooltipText.innerHTML = personalizedQuestion.tooltip;
+    }
+    
+    // Actualizar barra de progreso de la categoría
+    updateCategoryProgressBar();
+    
+    // Renderizar opciones de escala
+    renderScaleOptions();
+    
+    // Actualizar botones de navegación
+    updateNavigationButtons();
+}
+
+function updateCategoryProgressBar() {
+    const category = categories[appState.evaluationData.currentCategory];
+    const progress = ((appState.evaluationData.currentQuestion + 1) / category.questions.length) * 100;
+    const progressBar = document.getElementById('categoryProgressBar');
+    
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+    }
+}
+
+function renderScaleOptions() {
+    const scaleOptionsContainer = document.getElementById('scaleOptions');
+    if (!scaleOptionsContainer) return;
+    
+    const currentQuestion = getCurrentQuestion();
+    if (!currentQuestion) return;
+    
+    // Definir emojis y descripciones para cada nivel
+    const optionData = [
+        {
+            value: 0,
+            emoji: '😟',
+            label: 'Muy Bajo / No aplica',
+            description: 'No existe o no se implementa',
+            color: '#ef4444'
+        },
+        {
+            value: 1,
+            emoji: '😐',
+            label: 'Bajo / Iniciando',
+            description: 'En etapa muy temprana o informal',
+            color: '#f97316'
+        },
+        {
+            value: 2,
+            emoji: '🙂',
+            label: 'Medio / En desarrollo',
+            description: 'Parcialmente implementado',
+            color: '#eab308'
+        },
+        {
+            value: 3,
+            emoji: '😊',
+            label: 'Alto / Bien implementado',
+            description: 'Bien establecido y funcional',
+            color: '#3b82f6'
+        },
+        {
+            value: 4,
+            emoji: '🌟',
+            label: 'Muy Alto / Excelente',
+            description: 'Optimizado y en mejora continua',
+            color: '#10b981'
+        }
+    ];
+    
+    // Limpiar contenedor
+    scaleOptionsContainer.innerHTML = '';
+    
+    // Crear opciones mejoradas con animación escalonada
+    optionData.forEach((option, index) => {
+        const optionCard = document.createElement('div');
+        optionCard.className = 'scale-option';
+        optionCard.setAttribute('data-value', option.value);
+        optionCard.style.animationDelay = `${index * 0.1}s`;
+        
+        // Marcar como seleccionada si corresponde
+        if (currentQuestion.answer === option.value) {
+            optionCard.classList.add('selected');
+        }
+        
+        optionCard.innerHTML = `
+            <div class="option-icon">${option.emoji}</div>
+            <div class="option-number" style="background-color: ${option.color}">${option.value}</div>
+            <div class="option-label">${option.label}</div>
+            <div class="option-description">${option.description}</div>
+        `;
+        
+        // Event listener con animación mejorada
+        optionCard.addEventListener('click', function() {
+            selectOption(option.value, this, option.color);
+        });
+        
+        // Hover effect mejorado
+        optionCard.addEventListener('mouseenter', function() {
+            this.style.setProperty('--hover-color', option.color);
+        });
+        
+        scaleOptionsContainer.appendChild(optionCard);
+    });
+}
+
+function selectOption(value, element, color) {
+    const currentQuestion = getCurrentQuestion();
+    if (!currentQuestion) return;
+    
+    // Guardar respuesta
+    appState.evaluationData.answers[currentQuestion.id] = value;
+    
+    // Remover selección anterior
+    document.querySelectorAll('.scale-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    
+    // Agregar selección a la nueva opción con efecto especial
+    element.classList.add('selected');
+    element.style.setProperty('--selected-color', color);
+    
+    // Crear efecto de ondas
+    createRippleEffect(element, color);
+    
+    // Mostrar feedback visual mejorado
+    showEnhancedFeedback(value, color);
+    
+    // Habilitar botón siguiente
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.classList.add('btn-ready');
+    }
+    
+    // Actualizar progreso global
+    updateGlobalProgress();
+    
+    // Guardar en localStorage
+    autoSave();
+    
+    // Vibración sutil en móviles (si está disponible)
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+}
+
+function createRippleEffect(element, color) {
+    const ripple = document.createElement('div');
+    ripple.className = 'selection-ripple';
+    ripple.style.backgroundColor = color;
+    
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = '50%';
+    ripple.style.top = '50%';
+    ripple.style.transform = 'translate(-50%, -50%) scale(0)';
+    
+    element.appendChild(ripple);
+    
+    // Animar el ripple
+    setTimeout(() => {
+        ripple.style.transform = 'translate(-50%, -50%) scale(2)';
+        ripple.style.opacity = '0';
+    }, 10);
+    
+    // Remover después de la animación
+    setTimeout(() => {
+        if (element.contains(ripple)) {
+            element.removeChild(ripple);
+        }
+    }, 600);
+}
+
+function showEnhancedFeedback(value, color) {
+    const feedbackContainer = document.getElementById('selectedFeedback');
+    const feedbackMessage = document.getElementById('feedbackMessage');
+    
+    if (!feedbackContainer || !feedbackMessage) return;
+    
+    const messages = {
+        0: { text: '😟 Has seleccionado: Muy Bajo / No aplica', encouragement: 'Identificar áreas de mejora es el primer paso hacia el crecimiento' },
+        1: { text: '😐 Has seleccionado: Bajo / Iniciando', encouragement: 'Reconocer el punto de partida es clave para el progreso' },
+        2: { text: '🙂 Has seleccionado: Medio / En desarrollo', encouragement: 'Vas por buen camino, hay potencial de optimización' },
+        3: { text: '😊 Has seleccionado: Alto / Bien implementado', encouragement: '¡Excelente! Esta es una fortaleza de tu empresa' },
+        4: { text: '🌟 Has seleccionado: Muy Alto / Excelente', encouragement: '¡Impresionante! Eres un referente en esta área' }
+    };
+    
+    const message = messages[value];
+    
+    feedbackMessage.innerHTML = `
+        <div class="feedback-main" style="color: ${color}; font-weight: 600;">
+            ${message.text}
+        </div>
+        <div class="feedback-encouragement" style="color: var(--primary-700); font-size: 0.9rem; margin-top: 0.5rem;">
+            💡 ${message.encouragement}
+        </div>
+    `;
+    
+    feedbackContainer.classList.remove('hidden');
+    feedbackContainer.style.background = `linear-gradient(135deg, ${color}15, ${color}05)`;
+    feedbackContainer.style.border = `2px solid ${color}30`;
+    
+    // Animación de entrada mejorada
+    feedbackContainer.style.animation = 'none';
+    setTimeout(() => {
+        feedbackContainer.style.animation = 'feedbackSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+    }, 10);
+}
+
+function updateNavigationButtons() {
+    const btnPrev = document.getElementById('prevBtn');
+    const btnNext = document.getElementById('nextBtn');
+    
+    if (btnPrev) {
+        const isFirstQuestion = appState.evaluationData.currentCategory === 0 && 
+                               appState.evaluationData.currentQuestion === 0;
+        btnPrev.disabled = isFirstQuestion;
+        btnPrev.style.opacity = isFirstQuestion ? '0.5' : '1';
+        btnPrev.style.cursor = isFirstQuestion ? 'not-allowed' : 'pointer';
+    }
+    
+    if (btnNext) {
+        const category = categories[appState.evaluationData.currentCategory];
+        const question = category.questions[appState.evaluationData.currentQuestion];
+        const isAnswered = appState.evaluationData.answers[question.id] !== undefined;
+        
+        btnNext.disabled = !isAnswered;
+        btnNext.style.opacity = isAnswered ? '1' : '0.5';
+        btnNext.style.cursor = isAnswered ? 'pointer' : 'not-allowed';
+        
+        // Cambiar texto del botón en la última pregunta
+        const isLastQuestion = appState.evaluationData.currentCategory === categories.length - 1 &&
+                              appState.evaluationData.currentQuestion === category.questions.length - 1;
+        
+        if (isLastQuestion) {
+            btnNext.innerHTML = '✅ Finalizar Evaluación';
+        } else {
+            btnNext.innerHTML = 'Siguiente →';
+        }
+    }
+}
+
+function previousQuestion() {
+    if (appState.evaluationData.currentQuestion > 0) {
+        appState.evaluationData.currentQuestion--;
+    } else if (appState.evaluationData.currentCategory > 0) {
+        appState.evaluationData.currentCategory--;
+        appState.evaluationData.currentQuestion = 
+            categories[appState.evaluationData.currentCategory].questions.length - 1;
+    }
+    
+    renderCategoryProgress();
+    renderCurrentQuestion();
+    autoSave();
+    updateGlobalProgress();
+}
+
+function nextQuestion() {
+    const category = categories[appState.evaluationData.currentCategory];
+    
+    if (appState.evaluationData.currentQuestion < category.questions.length - 1) {
+        appState.evaluationData.currentQuestion++;
+    } else if (appState.evaluationData.currentCategory < categories.length - 1) {
+        // Categoría completada - mostrar insight
+        showCategoryCompletionInsight(category);
+        
+        appState.evaluationData.currentCategory++;
+        appState.evaluationData.currentQuestion = 0;
+        
+        // Marcar categoría como completada
+        if (!appState.evaluationData.completedCategories.includes(category.id)) {
+            appState.evaluationData.completedCategories.push(category.id);
+        }
+    } else {
+        finishEvaluation();
+        return;
+    }
+    
+    renderCategoryProgress();
+    renderCurrentQuestion();
+    autoSave();
+    updateGlobalProgress();
 }
 
 // ===== SISTEMA DE GAMIFICACIÓN =====
@@ -485,9 +900,6 @@ function showMotivationalToast(emoji, message) {
 }
 
 function updateEmotionalProgress(percentage) {
-    const progressContainer = document.getElementById('globalProgressPercentage');
-    if (!progressContainer) return;
-    
     // Encontrar el estado emocional actual
     let currentState = progressStates[0];
     for (let threshold of Object.keys(progressStates).sort((a, b) => b - a)) {
@@ -616,482 +1028,11 @@ function createConfetti() {
         confetti.style.animationDuration = (Math.random() * 2 + 1) + 's';
         confettiContainer.appendChild(confetti);
     }
-}ter(cat => 
-            cat.questions.every(q => appState.evaluationData.answers[q.id] !== undefined)
-        ).length;
-        progressText.textContent = `${completedCategories} de ${categories.length} categorías`;
-    }
-    
-    if (overallProgress) {
-        overallProgress.style.setProperty('--score', percentage);
-    }
-}
-
-function updateGlobalProgress() {
-    // Calcular total de preguntas respondidas
-    let totalAnswered = 0;
-    let totalQuestions = 0;
-    
-    categories.forEach(cat => {
-        totalQuestions += cat.questions.length;
-        cat.questions.forEach(q => {
-            if (q.answer !== null && q.answer !== undefined) {
-                totalAnswered++;
-            }
-        });
-    });
-    
-    const percentage = Math.round((totalAnswered / totalQuestions) * 100);
-    
-    // Actualizar elementos del DOM
-    const currentEl = document.getElementById('globalProgressCurrent');
-    const totalEl = document.getElementById('globalProgressTotal');
-    const percentageEl = document.getElementById('globalProgressPercentage');
-    const fillEl = document.getElementById('globalProgressFill');
-    
-    if (currentEl) currentEl.textContent = totalAnswered;
-    if (totalEl) totalEl.textContent = totalQuestions;
-    if (percentageEl) percentageEl.textContent = percentage;
-    
-    if (fillEl) {
-        // Agregar clase para animación de "bump"
-        fillEl.classList.add('progress-bump');
-        setTimeout(() => fillEl.classList.remove('progress-bump'), 600);
-        
-        // Actualizar ancho con animación
-        fillEl.style.width = `${percentage}%`;
-        
-        // Celebración al llegar al 100%
-        if (percentage === 100) {
-            celebrateCompletion();
-        }
-    }
 }
 
 // Función de celebración al completar 100%
 function celebrateCompletion() {
-    // Crear efecto de confetti (opcional - requiere librería canvas-confetti)
-    // Si no quieres instalar librería, comenta esta parte
-    if (typeof confetti === 'function') {
-        confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-        });
-    }
-    
-    // Mostrar mensaje de felicitación
     showToast('🎉 ¡Felicitaciones! Has completado todas las preguntas', 'success');
-}
-
-function renderCurrentQuestion() {
-    const category = categories[appState.evaluationData.currentCategory];
-    const question = category.questions[appState.evaluationData.currentQuestion];
-    
-    // Actualizar información de categoría
-    const categoryBadge = document.getElementById('categoryBadge');
-    const categoryTitle = document.getElementById('categoryTitle');
-    const categoryDescription = document.getElementById('categoryDescription');
-    const questionNumber = document.getElementById('questionNumber');
-    const questionText = document.getElementById('questionText');
-    const tooltipText = document.getElementById('tooltipText');
-    
-    if (categoryBadge) {
-        categoryBadge.textContent = `${category.icon} ${cate    // Personalizar pregunta según sector
-    const personalizedQuestion = personalizeQuestionBySector(question);
-    
-    if (questionText) {
-        questionText.innerHTML = personalizedQuestion.text;
-    }
-    
-    if (tooltipText) {
-        tooltipText.innerHTML = personalizedQuestion.tooltip;
-    }yDescription.textContent = category.description;
-    }
-    
-    if (questionNumber) {
-        questionNumber.textContent = `Pregunta ${appState.evaluationData.currentQuestion + 1} de ${category.questions.length}`;
-    }
-    
-    if (questionText) {
-        questionText.textContent = question.text;
-    }
-    
-    if (tooltipText) {
-        tooltipText.textContent = question.tooltip;
-    }
-    
-    // Actualizar barra de progreso de la categoría
-    updateCategoryProgressBar();
-    
-    // Renderizar opciones de escala
-    renderScaleOptionsImproved();
-    
-    // Actualizar botones de navegación
-    updateNavigationButtons();
-}
-
-function renderScaleOptionsImproved() {
-    const scaleOptionsContainer = document.getElementById('scaleOptions');
-    if (!scaleOptionsContainer) return;
-    
-    const currentQuestion = getCurrentQuestion();
-    if (!currentQuestion) return;
-    
-    // Definir emojis y descripciones para cada nivel
-    const optionData = [
-        {
-            value: 0,
-            emoji: '😟',
-            label: 'Muy Bajo / No aplica',
-            description: 'No existe o no se implementa',
-            color: '#ef4444'
-        },
-        {
-            value: 1,
-            emoji: '😐',
-            label: 'Bajo / Iniciando',
-            description: 'En etapa muy temprana o informal',
-            color: '#f97316'
-        },
-        {
-            value: 2,
-            emoji: '🙂',
-            label: 'Medio / En desarrollo',
-            description: 'Parcialmente implementado',
-            color: '#eab308'
-        },
-        {
-            value: 3,
-            emoji: '😊',
-            label: 'Alto / Bien implementado',
-            description: 'Bien establecido y funcional',
-            color: '#3b82f6'
-        },
-        {
-            value: 4,
-            emoji: '🌟',
-            label: 'Muy Alto / Excelente',
-            description: 'Optimizado y en mejora continua',
-            color: '#10b981'
-        }
-    ];
-    
-    // Limpiar contenedor
-    scaleOptionsContainer.innerHTML = '';
-    
-    // Crear opciones mejoradas con animación escalonada
-    optionData.forEach((option, index) => {
-        const optionCard = document.createElement('div');
-        optionCard.className = 'scale-option';
-        optionCard.setAttribute('data-value', option.value);
-        optionCard.style.animationDelay = `${index * 0.1}s`;
-        
-        // Marcar como seleccionada si corresponde
-        if (currentQuestion.answer === option.value) {
-            optionCard.classList.add('selected');
-        }
-        
-        optionCard.innerHTML = `
-            <div class="option-icon">${option.emoji}</div>
-            <div class="option-number" style="background-color: ${option.color}">${option.value}</div>
-            <div class="option-label">${option.label}</div>
-            <div class="option-description">${option.description}</div>
-            <div class="option-pulse"></div>
-        `;
-        
-        // Event listener con animación mejorada
-        optionCard.addEventListener('click', function() {
-            selectOptionImproved(option.value, this, option.color);
-        });
-        
-        // Hover effect mejorado
-        optionCard.addEventListener('mouseenter', function() {
-            this.style.setProperty('--hover-color', option.color);
-        });
-        
-        scaleOptionsContainer.appendChild(optionCard);
-    });
-}
-
-// Función mejorada para seleccionar opción
-function selectOptionImproved(value, element, color) {
-    const currentQuestion = getCurrentQuestion();
-    if (!currentQuestion) return;
-    
-    // Guardar respuesta
-    currentQuestion.answer = value;
-    
-    // Remover selección anterior
-    document.querySelectorAll('.scale-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    
-    // Agregar selección a la nueva opción con efecto especial
-    element.classList.add('selected');
-    element.style.setProperty('--selected-color', color);
-    
-    // Crear efecto de ondas
-    createRippleEffect(element, color);
-    
-    // Mostrar feedback visual mejorado
-    showEnhancedFeedback(value, color);
-    
-    // Habilitar botón siguiente
-    const nextBtn = document.getElementById('nextBtn');
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.classList.add('btn-ready');
-    }
-    
-    // Actualizar progreso global
-    updateGlobalProgress();
-    
-    // Guardar en localStorage
-    saveToLocalStorage();
-    
-    // Vibración sutil en móviles (si está disponible)
-    if (navigator.vibrate) {
-        navigator.vibrate(50);
-    }
-}
-
-function createRippleEffect(element, color) {
-    const ripple = document.createElement('div');
-    ripple.className = 'selection-ripple';
-    ripple.style.backgroundColor = color;
-    
-    const rect = element.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    ripple.style.width = ripple.style.height = size + 'px';
-    ripple.style.left = '50%';
-    ripple.style.top = '50%';
-    ripple.style.transform = 'translate(-50%, -50%) scale(0)';
-    
-    element.appendChild(ripple);
-    
-    // Animar el ripple
-    setTimeout(() => {
-        ripple.style.transform = 'translate(-50%, -50%) scale(2)';
-        ripple.style.opacity = '0';
-    }, 10);
-    
-    // Remover después de la animación
-    setTimeout(() => {
-        if (element.contains(ripple)) {
-            element.removeChild(ripple);
-        }
-    }, 600);
-}
-
-function showEnhancedFeedback(value, color) {
-    const feedbackContainer = document.getElementById('selectedFeedback');
-    const feedbackMessage = document.getElementById('feedbackMessage');
-    
-    if (!feedbackContainer || !feedbackMessage) return;
-    
-    const messages = {
-        0: { text: '😟 Has seleccionado: Muy Bajo / No aplica', encouragement: 'Identificar áreas de mejora es el primer paso hacia el crecimiento' },
-        1: { text: '😐 Has seleccionado: Bajo / Iniciando', encouragement: 'Reconocer el punto de partida es clave para el progreso' },
-        2: { text: '🙂 Has seleccionado: Medio / En desarrollo', encouragement: 'Vas por buen camino, hay potencial de optimización' },
-        3: { text: '😊 Has seleccionado: Alto / Bien implementado', encouragement: '¡Excelente! Esta es una fortaleza de tu empresa' },
-        4: { text: '🌟 Has seleccionado: Muy Alto / Excelente', encouragement: '¡Impresionante! Eres un referente en esta área' }
-    };
-    
-    const message = messages[value];
-    
-    feedbackMessage.innerHTML = `
-        <div class="feedback-main" style="color: ${color}; font-weight: 600;">
-            ${message.text}
-        </div>
-        <div class="feedback-encouragement" style="color: var(--primary-700); font-size: 0.9rem; margin-top: 0.5rem;">
-            💡 ${message.encouragement}
-        </div>
-    `;
-    
-    feedbackContainer.classList.remove('hidden');
-    feedbackContainer.style.background = `linear-gradient(135deg, ${color}15, ${color}05)`;
-    feedbackContainer.style.border = `2px solid ${color}30`;
-    
-    // Animación de entrada mejorada
-    feedbackContainer.style.animation = 'none';
-    setTimeout(() => {
-        feedbackContainer.style.animation = 'feedbackSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-    }, 10);
-}on-icon">${option.emoji}</div>
-            <div class="option-number">${option.value}</div>
-            <div class="option-label">${option.label}</div>
-            <div class="option-description">${option.description}</div>
-        `;
-        
-        // Event listener con animación
-        optionCard.addEventListener('click', function() {
-            selectOptionImproved(option.value, this);
-        });
-        
-        scaleOptionsContainer.appendChild(optionCard);
-    });
-}
-
-// Función mejorada para seleccionar opción
-function selectOptionImproved(value, element) {
-    const currentQuestion = getCurrentQuestion();
-    if (!currentQuestion) return;
-    
-    // Guardar respuesta
-    currentQuestion.answer = value;
-    
-    // Remover selección anterior
-    document.querySelectorAll('.scale-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    
-    // Agregar selección a la nueva opción
-    element.classList.add('selected');
-    
-    // Mostrar feedback visual
-    showFeedbackMessage(value);
-    
-    // Habilitar botón siguiente
-    const nextBtn = document.getElementById('nextBtn');
-    if (nextBtn) {
-        nextBtn.disabled = false;
-    }
-    
-    // Actualizar progreso global
-    if (typeof updateGlobalProgress === 'function') {
-        updateGlobalProgress();
-    }
-    
-    // Guardar en localStorage
-    saveToLocalStorage();
-    
-    // Auto-avanzar después de 1 segundo (opcional)
-    // Descomentar si quieres que avance automáticamente:
-    // setTimeout(() => {
-    //     if (nextBtn && !nextBtn.disabled) {
-    //         nextBtn.click();
-    //     }
-    // }, 1000);
-}
-
-// Función para mostrar mensaje de feedback
-function showFeedbackMessage(value) {
-    const feedbackContainer = document.getElementById('selectedFeedback');
-    const feedbackMessage = document.getElementById('feedbackMessage');
-    
-    if (!feedbackContainer || !feedbackMessage) return;
-    
-    const messages = {
-        0: { text: '😟 Has seleccionado: Muy Bajo / No aplica', color: '#ef4444' },
-        1: { text: '😐 Has seleccionado: Bajo / Iniciando', color: '#f97316' },
-        2: { text: '🙂 Has seleccionado: Medio / En desarrollo', color: '#eab308' },
-        3: { text: '😊 Has seleccionado: Alto / Bien implementado', color: '#3b82f6' },
-        4: { text: '🌟 Has seleccionado: Muy Alto / Excelente', color: '#10b981' }
-    };
-    
-    const message = messages[value];
-    
-    feedbackMessage.textContent = message.text;
-    feedbackMessage.style.color = message.color;
-    feedbackMessage.style.fontWeight = '600';
-    
-    feedbackContainer.classList.remove('hidden');
-    
-    // Animación de entrada
-    feedbackContainer.style.animation = 'none';
-    setTimeout(() => {
-        feedbackContainer.style.animation = 'slideInUp 0.4s ease';
-    }, 10);
-}
-
-
-function showAnswerFeedback(answerValue) {
-    const feedbackContainer = document.getElementById('selectedFeedback');
-    const feedbackMessage = document.getElementById('feedbackMessage');
-    
-    if (!feedbackContainer || !feedbackMessage) return;
-    
-    if (answerValue !== null && answerValue !== undefined) {
-        feedbackContainer.classList.remove('hidden');
-        feedbackMessage.innerHTML = `
-            <span style="color: ${scaleColors[answerValue]}; font-weight: 600;">
-                ✅ Has seleccionado: ${scaleLabels[answerValue]}
-            </span>
-        `;
-        feedbackMessage.style.backgroundColor = `${scaleColors[answerValue]}20`;
-        feedbackMessage.style.padding = '1rem';
-        feedbackMessage.style.borderRadius = '0.5rem';
-    } else {
-        feedbackContainer.classList.add('hidden');
-    }
-}
-
-function getAnswerValue(questionId) {
-    return appState.evaluationData.answers[questionId] !== undefined 
-        ? appState.evaluationData.answers[questionId] 
-        : null;
-}
-
-function selectAnswer(questionId, value) {
-    appState.evaluationData.answers[questionId] = value;
-    autoSave();
-    renderCurrentQuestion();
-    updateGlobalProgress();
-}
-
-function updateNavigationButtons() {
-    // Intentar con ambos IDs por compatibilidad
-    const btnPrev = document.getElementById('btnPrevQuestion') || document.getElementById('prevBtn');
-    const btnNext = document.getElementById('btnNextQuestion') || document.getElementById('nextBtn');
-    
-    if (btnPrev) {
-        const isFirstQuestion = appState.evaluationData.currentCategory === 0 && 
-                               appState.evaluationData.currentQuestion === 0;
-        btnPrev.disabled = isFirstQuestion;
-        btnPrev.style.opacity = isFirstQuestion ? '0.5' : '1';
-        btnPrev.style.cursor = isFirstQuestion ? 'not-allowed' : 'pointer';
-    }
-    
-    if (btnNext) {
-        const category = categories[appState.evaluationData.currentCategory];
-        const question = category.questions[appState.evaluationData.currentQuestion];
-        const isAnswered = getAnswerValue(question.id) !== null;
-        
-        btnNext.disabled = !isAnswered;
-        btnNext.style.opacity = isAnswered ? '1' : '0.5';
-        btnNext.style.cursor = isAnswered ? 'pointer' : 'not-allowed';
-        
-        // Cambiar texto del botón en la última pregunta
-        const isLastQuestion = appState.evaluationData.currentCategory === categories.length - 1 &&
-                              appState.evaluationData.currentQuestion === category.questions.length - 1;
-        
-        if (isLastQuestion) {
-            btfunction nextQuestion() {
-    const category = categories[appState.evaluationData.currentCategory];
-    
-    if (appState.evaluationData.currentQuestion < category.questions.length - 1) {
-        appState.evaluationData.currentQuestion++;
-    } else if (appState.evaluationData.currentCategory < categories.length - 1) {
-        // Categoría completada - mostrar insight
-        showCategoryCompletionInsight(category);
-        
-        appState.evaluationData.currentCategory++;
-        appState.evaluationData.currentQuestion = 0;
-        
-        // Marcar categoría como completada
-        if (!appState.evaluationData.completedCategories.includes(category.id)) {
-            appState.evaluationData.completedCategories.push(category.id);
-        }
-    } else {
-        finishEvaluation();
-        return;
-    }
-    
-    renderCategoryProgress();
-    renderCurrentQuestion();
-    autoSave();
-    updateGlobalProgress();
 }
 
 // ===== INSIGHTS PARCIALES POR CATEGORÍA =====
@@ -1169,7 +1110,6 @@ function getCategoryInsight(categoryId, score) {
                 tip: "Comienza documentando y estandarizando tus procesos más importantes."
             }
         }
-        // Agregar más categorías según sea necesario...
     };
     
     const categoryInsights = insights[categoryId] || insights['vision_estrategia'];
@@ -1222,28 +1162,58 @@ function closeInsightModal() {
         modal.classList.add('closing');
         setTimeout(() => document.body.removeChild(modal), 300);
     }
-});
-    autoSave();
-    updateGlobalProgress();
 }
 
-function nextQuestion() {
-    const category = categories[appState.evaluationData.currentCategory];
+// ===== PERSONALIZACIÓN POR SECTOR =====
+function personalizeQuestionBySector(question) {
+    const sector = appState.companyData.sector || 'Servicios';
+    const adaptation = sectorAdaptations[sector] || sectorAdaptations['Servicios'];
     
-    if (appState.evaluationData.currentQuestion < category.questions.length - 1) {
-        appState.evaluationData.currentQuestion++;
-    } else if (appState.evaluationData.currentCategory < categories.length - 1) {
-        appState.evaluationData.currentCategory++;
-        appState.evaluationData.currentQuestion = 0;
-    } else {
-        finishEvaluation();
-        return;
+    let personalizedText = question.text;
+    let personalizedTooltip = question.tooltip;
+    
+    // Personalización específica por pregunta
+    if (question.id === 'et_01') {
+        personalizedText = `¿La infraestructura tecnológica actual (${adaptation.examples}) soporta las necesidades del negocio?`;
+        personalizedTooltip = `La tecnología debe ser un habilitador para ${adaptation.focus}. En ${sector}, esto incluye ${adaptation.examples}.`;
     }
     
-    renderCategoryProgress();
-    renderCurrentQuestion();
-    autoSave();
-    updateGlobalProgress();
+    if (question.id === 'po_02') {
+        personalizedText = `¿Se utilizan herramientas tecnológicas (${adaptation.tools}) para automatizar tareas repetitivas?`;
+        personalizedTooltip = `La automatización libera tiempo del personal para enfocarse en ${adaptation.focus}.`;
+    }
+    
+    if (question.id === 'in_03') {
+        personalizedText = `¿Se utilizan herramientas de visualización para monitorear métricas clave (${adaptation.metrics})?`;
+        personalizedTooltip = `Dashboards muestran ${adaptation.metrics} en tiempo real para optimizar ${adaptation.focus}.`;
+    }
+    
+    if (question.id === 'cx_01') {
+        personalizedTooltip = `En ${sector}, es crucial medir la satisfacción considerando ${adaptation.pain_points}.`;
+    }
+    
+    if (question.id === 'ia_01') {
+        personalizedTooltip = `Para ${sector}, la innovación debe enfocarse en ${adaptation.focus} y resolver ${adaptation.pain_points}.`;
+    }
+    
+    return {
+        text: personalizedText,
+        tooltip: personalizedTooltip
+    };
+}
+
+// Función auxiliar para obtener el objeto de pregunta actual
+function getCurrentQuestion() {
+    const category = categories[appState.evaluationData.currentCategory];
+    if (!category) return null;
+    
+    const question = category.questions[appState.evaluationData.currentQuestion];
+    if (!question) return null;
+    
+    // Agregar la respuesta actual si existe
+    question.answer = appState.evaluationData.answers[question.id];
+    
+    return question;
 }
 
 // ===== FINALIZACIÓN Y RESULTADOS =====
@@ -1580,6 +1550,8 @@ function loadSavedState() {
             if (appState.currentSection === 'evaluation') {
                 renderCategoryProgress();
                 renderCurrentQuestion();
+                updateGlobalProgress();
+                updateAchievementsCounter();
             } else if (appState.currentSection === 'results') {
                 renderResults();
             }
@@ -1587,7 +1559,7 @@ function loadSavedState() {
     }
 }
 
-// ===== GENERACIÓN DE PDF - VERSIÓN FINAL CORREGIDA =====
+// ===== GENERACIÓN DE PDF (manteniendo la función original) =====
 async function downloadPDF() {
     showLoading('Generando tu reporte profesional...');
     
@@ -1620,7 +1592,7 @@ async function downloadPDF() {
         const maturityLevel = evaluationData.maturityLevel || { level: 'N/A', description: 'Sin datos' };
         const categoryScores = evaluationData.categoryScores || {};
         
-        // CORRECCIÓN 1: Función para cargar logo manteniendo proporción
+        // Función para cargar logo manteniendo proporción
         async function loadLogo() {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -1647,8 +1619,7 @@ async function downloadPDF() {
         
         const logoInfo = await loadLogo();
         
-        // ========== PÁGINA 1: PORTADA ==========
-        
+        // PÁGINA 1: PORTADA
         doc.setFillColor(...colors.primary);
         doc.rect(0, 0, pageWidth, 100, 'F');
         
@@ -1703,7 +1674,7 @@ async function downloadPDF() {
         doc.setFontSize(11);
         doc.text(`${companyData.contactName || 'N/A'} | ${companyData.email || 'N/A'}`, pageWidth/2, y + 90, { align: 'center' });
         
-        // CORRECCIÓN 2: Círculo con progreso real
+        // Círculo con progreso real
         y += 170;
         const circleX = pageWidth / 2;
         const circleY = y + 60;
@@ -1717,7 +1688,6 @@ async function downloadPDF() {
         // Arco de progreso basado en score real
         const startAngle = -90;
         const progressAngle = (finalScore / 100) * 360;
-        const endAngle = startAngle + progressAngle;
         
         doc.setDrawColor(...colors.purple);
         doc.setLineWidth(14);
@@ -1767,469 +1737,6 @@ async function downloadPDF() {
         doc.setFontSize(10);
         doc.text(`Puntuacion: ${finalScore}/100`, pageWidth/2, y + 18, { align: 'center' });
         
-        y += 45;
-        doc.setFillColor(...colors.lightGray);
-        doc.roundedRect(margin + 30, y, contentWidth - 60, 70, 8, 8, 'F');
-        
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.primary);
-        doc.text('EVALUACION EJECUTIVA', pageWidth/2, y + 22, { align: 'center' });
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(60, 60, 60);
-        const evaluationText = maturityLevel.description || 'Evaluacion completa de madurez empresarial.';
-        const evalLines = doc.splitTextToSize(evaluationText, contentWidth - 100);
-        doc.text(evalLines, pageWidth/2, y + 42, { align: 'center' });
-        
-        // CORRECCIÓN 3: Estadísticas bien posicionadas
-        y += 100;
-        const statsY = y;
-        const statsWidth = contentWidth / 3 - 10;
-        let statsX = margin;
-        
-        function createStatBox(x, y, number, label, color) {
-            doc.setFillColor(...colors.lightGray);
-            doc.roundedRect(x, y, statsWidth, 70, 8, 8, 'F');
-            
-            doc.setFontSize(32);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...color);
-            doc.text(number, x + statsWidth/2, y + 35, { align: 'center' });
-            
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.gray);
-            doc.text(label, x + statsWidth/2, y + 55, { align: 'center' });
-        }
-        
-        createStatBox(statsX, statsY, '10', 'Dimensiones', colors.purple);
-        createStatBox(statsX + statsWidth + 15, statsY, '50', 'Preguntas', colors.turquoise);
-        createStatBox(statsX + (statsWidth + 15) * 2, statsY, companyData.sector || 'Sector', 'Sector', colors.orange);
-        
-        addFooter(doc, pageWidth, pageHeight, logoInfo);
-        
-        // ========== PÁGINA 2: BARRAS VERTICALES ==========
-        
-        doc.addPage();
-        addPageHeader(doc, pageWidth, 'ANALISIS POR DIMENSIONES', logoInfo);
-        
-        y = 140;
-        
-        // CORRECCIÓN 4: Barras verticales
-        const numCategories = categories.length;
-        const barWidth = 45;
-        const barSpacing = 12;
-        const totalBarWidth = (barWidth + barSpacing) * numCategories;
-        const startX = (pageWidth - totalBarWidth) / 2 + barSpacing / 2;
-        const maxBarHeight = 280;
-        const baseY = y + maxBarHeight + 50;
-        
-        doc.setDrawColor(...colors.gray);
-        doc.setLineWidth(1);
-        doc.line(startX - 10, baseY, startX + totalBarWidth, baseY);
-        
-        doc.setDrawColor(230, 230, 230);
-        for (let i = 0; i <= 5; i++) {
-            const lineY = baseY - (maxBarHeight * i / 5);
-            doc.line(startX - 10, lineY, startX + totalBarWidth, lineY);
-            
-            doc.setFontSize(8);
-            doc.setTextColor(...colors.gray);
-            doc.text((i * 20).toString(), startX - 20, lineY + 3, { align: 'right' });
-        }
-        
-        categories.forEach((category, index) => {
-            const score = categoryScores[category.id] || 0;
-            const scoreColor = hexToRgbArray(getScoreColor(score));
-            
-            const barX = startX + (index * (barWidth + barSpacing));
-            const barHeight = (maxBarHeight * score) / 100;
-            const barY = baseY - barHeight;
-            
-            doc.setFillColor(200, 200, 200);
-            doc.roundedRect(barX + 2, barY + 2, barWidth, barHeight, 4, 4, 'F');
-            
-            doc.setFillColor(...scoreColor);
-            doc.roundedRect(barX, barY, barWidth, barHeight, 4, 4, 'F');
-            
-            doc.setFillColor(255, 255, 255, 0.3);
-            doc.roundedRect(barX, barY, barWidth, Math.min(barHeight, 20), 4, 4, 'F');
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...scoreColor);
-            doc.text(score.toString(), barX + barWidth/2, barY - 8, { align: 'center' });
-            
-            // CORRECCIÓN 5: Nombre sin símbolos raros
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.primary);
-            
-            const categoryName = category.name;
-            const nameLines = doc.splitTextToSize(categoryName, barWidth + 10);
-            let nameY = baseY + 15;
-            nameLines.forEach(line => {
-                doc.text(line, barX + barWidth/2, nameY, { align: 'center' });
-                nameY += 10;
-            });
-        });
-        
-        addFooter(doc, pageWidth, pageHeight, logoInfo);
-        
-        // ========== PÁGINA 3: PUNTUACIONES DETALLADAS ==========
-        
-        doc.addPage();
-        addPageHeader(doc, pageWidth, 'PUNTUACIONES DETALLADAS', logoInfo);
-        
-        y = 140;
-        
-        const cardWidth = (contentWidth - 20) / 2;
-        const cardHeight = 110;
-        let cardX = margin;
-        let cardCount = 0;
-        
-        categories.forEach((category, index) => {
-            const score = categoryScores[category.id] || 0;
-            const scoreColor = hexToRgbArray(getScoreColor(score));
-            const scoreDesc = getScoreDescription(score);
-            
-            doc.setFillColor(...colors.white);
-            doc.setDrawColor(...scoreColor);
-            doc.setLineWidth(2);
-            doc.roundedRect(cardX, y, cardWidth, cardHeight, 10, 10, 'FD');
-            
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.primary);
-            const nameLines = doc.splitTextToSize(category.name, cardWidth - 110);
-            doc.text(nameLines, cardX + 15, y + 28);
-            
-            doc.setFontSize(36);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...scoreColor);
-            doc.text(score.toString(), cardX + cardWidth - 20, y + 45, { align: 'right' });
-            
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...scoreColor);
-            doc.text(scoreDesc, cardX + 15, y + 70);
-            
-            const miniBarWidth = cardWidth - 30;
-            doc.setFillColor(229, 231, 235);
-            doc.roundedRect(cardX + 15, y + 80, miniBarWidth, 8, 4, 4, 'F');
-            
-            const miniBarProgress = (miniBarWidth * score) / 100;
-            doc.setFillColor(...scoreColor);
-            doc.roundedRect(cardX + 15, y + 80, miniBarProgress, 8, 4, 4, 'F');
-            
-            cardCount++;
-            if (cardCount % 2 === 0) {
-                cardX = margin;
-                y += cardHeight + 15;
-            } else {
-                cardX = margin + cardWidth + 20;
-            }
-            
-            if (y > pageHeight - 200 && index < categories.length - 1) {
-                addFooter(doc, pageWidth, pageHeight, logoInfo);
-                doc.addPage();
-                addPageHeader(doc, pageWidth, 'PUNTUACIONES DETALLADAS', logoInfo);
-                y = 140;
-                cardX = margin;
-                cardCount = 0;
-            }
-        });
-        
-        // CORRECCIÓN 6: Insights en la misma página
-        y = cardCount % 2 === 0 ? y + 20 : y + cardHeight + 35;
-        
-        if (y > pageHeight - 180) {
-            addFooter(doc, pageWidth, pageHeight, logoInfo);
-            doc.addPage();
-            addPageHeader(doc, pageWidth, 'INSIGHTS CLAVE', logoInfo);
-            y = 140;
-        }
-        
-        doc.setFillColor(...colors.purple);
-        doc.roundedRect(margin, y, contentWidth, 140, 10, 10, 'F');
-        
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.white);
-        doc.text('INSIGHTS CLAVE', margin + 20, y + 30);
-        
-        const avgScore = Math.round(finalScore);
-        const topCat = getTopCategory();
-        const lowestCat = getLowestCategory();
-        
-        const insights = [
-            `Desempeno promedio: ${avgScore}%`,
-            `Fortaleza principal: ${getCategoryNameById(topCat.id)} (${topCat.score} pts)`,
-            `Mayor oportunidad: ${getCategoryNameById(lowestCat.id)} (${lowestCat.score} pts)`,
-            `Desempeno consistente en multiples dimensiones`
-        ];
-        
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        insights.forEach((insight, idx) => {
-            doc.text(insight, margin + 20, y + 60 + (idx * 20));
-        });
-        
-        addFooter(doc, pageWidth, pageHeight, logoInfo);
-        
-        // ========== PÁGINA 4: PLAN DE ACCIÓN ==========
-        
-        doc.addPage();
-        addPageHeader(doc, pageWidth, 'PLAN DE ACCION ESTRATEGICO', logoInfo);
-        
-        y = 140;
-        
-        doc.setFillColor(...colors.lightGray);
-        doc.roundedRect(margin, y, contentWidth, 50, 8, 8, 'F');
-        
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.purple);
-        doc.text('METODOLOGIA', margin + 15, y + 20);
-        
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...colors.gray);
-        doc.text('Recomendaciones priorizadas por impacto vs. esfuerzo de implementacion', margin + 15, y + 38);
-        
-        y += 70;
-        
-        const recommendations = generateRecommendations();
-        const topRecommendations = recommendations.slice(0, 3);
-        
-        const priorityColors = {
-            'PRIORIDAD 1': [170, 47, 12],
-            'PRIORIDAD 2': [238, 128, 40],
-            'PRIORIDAD 3': [76, 206, 213],
-            'CRITICO': [170, 47, 12],
-            'ALTO': [238, 128, 40],
-            'MEDIO': [76, 206, 213]
-        };
-        
-        topRecommendations.forEach((rec, idx) => {
-            if (y > pageHeight - 200) {
-                addFooter(doc, pageWidth, pageHeight, logoInfo);
-                doc.addPage();
-                addPageHeader(doc, pageWidth, 'PLAN DE ACCION ESTRATEGICO', logoInfo);
-                y = 140;
-            }
-            
-            const recHeight = 140;
-            const priorityColor = priorityColors[rec.priority] || colors.gray;
-            
-            doc.setFillColor(...priorityColor);
-            doc.rect(margin, y, 8, recHeight, 'F');
-            
-            doc.setFillColor(...colors.white);
-            doc.setDrawColor(...colors.gray);
-            doc.setLineWidth(1);
-            doc.roundedRect(margin + 8, y, contentWidth - 8, recHeight, 8, 8, 'FD');
-            
-            doc.setFillColor(...priorityColor);
-            doc.roundedRect(margin + 20, y + 15, 100, 20, 10, 10, 'F');
-            
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.white);
-            doc.text(rec.priority, margin + 70, y + 28, { align: 'center' });
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.primary);
-            doc.text(rec.title, margin + 20, y + 50);
-            
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.gray);
-            const descLines = doc.splitTextToSize(rec.description, contentWidth - 50);
-            doc.text(descLines, margin + 20, y + 68);
-            
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.primary);
-            doc.text('Acciones:', margin + 20, y + 95);
-            
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(60, 60, 60);
-            rec.actions.slice(0, 3).forEach((action, i) => {
-                const actionText = `${action.substring(0, 55)}${action.length > 55 ? '...' : ''}`;
-                doc.text(actionText, margin + 20, y + 110 + (i * 10));
-            });
-            
-            y += recHeight + 15;
-        });
-        
-        if (y > pageHeight - 150) {
-            addFooter(doc, pageWidth, pageHeight, logoInfo);
-            doc.addPage();
-            addPageHeader(doc, pageWidth, 'CRONOGRAMA SUGERIDO', logoInfo);
-            y = 140;
-        } else {
-            y += 10;
-        }
-        
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.primary);
-        doc.text('CRONOGRAMA SUGERIDO', margin, y);
-        
-        y += 40;
-        const timelineSteps = [
-            { color: [170, 47, 12], title: 'Mes 1-2', desc: 'Implementar prioridad alta' },
-            { color: [238, 128, 40], title: 'Mes 3-4', desc: 'Desarrollar prioridad media' },
-            { color: [16, 185, 129], title: 'Mes 5-6', desc: 'Optimizar y consolidar' }
-        ];
-        
-        const stepWidth = (contentWidth - 40) / 3;
-        let stepX = margin;
-        
-        timelineSteps.forEach((step, index) => {
-            doc.setFillColor(200, 200, 200);
-            doc.circle(stepX + 20 + 2, y + 15 + 2, 18, 'F');
-            
-            doc.setFillColor(...step.color);
-            doc.circle(stepX + 20, y + 15, 18, 'F');
-            
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.white);
-            doc.text((index + 1).toString(), stepX + 20, y + 21, { align: 'center' });
-            
-            if (index < timelineSteps.length - 1) {
-                doc.setDrawColor(...colors.gray);
-                doc.setLineWidth(2);
-                doc.line(stepX + 38, y + 15, stepX + stepWidth, y + 15);
-            }
-            
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.primary);
-            doc.text(step.title, stepX + 45, y + 12);
-            
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.gray);
-            const descLines = doc.splitTextToSize(step.desc, stepWidth - 50);
-            doc.text(descLines, stepX + 45, y + 28);
-            
-            stepX += stepWidth;
-        });
-        
-        addFooter(doc, pageWidth, pageHeight, logoInfo);
-        
-        // ========== PÁGINA 5: CTA ==========
-        
-        doc.addPage();
-        
-        y = 80;
-        
-        doc.setFillColor(...colors.primary);
-        doc.roundedRect(0, y, pageWidth, 140, 0, 0, 'F');
-        
-        if (logoInfo) {
-            try {
-                const logoWidth = 80;
-                const logoHeight = logoWidth / logoInfo.aspectRatio;
-                doc.addImage(logoInfo.data, 'PNG', margin, y + 30, logoWidth, logoHeight);
-            } catch (e) {}
-        }
-        
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.white);
-        doc.text('LISTO PARA TRANSFORMAR', pageWidth/2, y + 50, { align: 'center' });
-        doc.text('TU PYME?', pageWidth/2, y + 78, { align: 'center' });
-        
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Este reporte es el primer paso. Ahora es momento de actuar.', pageWidth/2, y + 100, { align: 'center' });
-        doc.text('Nuestro equipo puede acompanarte en cada etapa.', pageWidth/2, y + 118, { align: 'center' });
-        
-        y += 180;
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.primary);
-        doc.text('NUESTROS SERVICIOS', pageWidth/2, y, { align: 'center' });
-        
-        y += 40;
-        const services = [
-            { title: 'Consultoria Estrategica', desc: 'Implementacion de roadmap personalizado' },
-            { title: 'Optimizacion de Procesos', desc: 'Automatizacion de operaciones clave' },
-            { title: 'Transformacion Digital', desc: 'Tecnologias para impulsar crecimiento' },
-            { title: 'Business Intelligence', desc: 'Sistemas de datos para decisiones' }
-        ];
-        
-        const serviceBoxWidth = (contentWidth - 20) / 2;
-        const serviceBoxHeight = 80;
-        let serviceX = margin;
-        let serviceY = y;
-        let serviceCount = 0;
-        
-        services.forEach((service, idx) => {
-            doc.setFillColor(...colors.lightGray);
-            doc.roundedRect(serviceX, serviceY, serviceBoxWidth, serviceBoxHeight, 10, 10, 'F');
-            
-            doc.setDrawColor(...colors.purple);
-            doc.setLineWidth(2);
-            doc.roundedRect(serviceX, serviceY, serviceBoxWidth, serviceBoxHeight, 10, 10, 'S');
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.purple);
-            doc.text(service.title, serviceX + 15, serviceY + 30);
-            
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.gray);
-            const serviceDescLines = doc.splitTextToSize(service.desc, serviceBoxWidth - 30);
-            doc.text(serviceDescLines, serviceX + 15, serviceY + 50);
-            
-            serviceCount++;
-            if (serviceCount % 2 === 0) {
-                serviceX = margin;
-                serviceY += serviceBoxHeight + 15;
-            } else {
-                serviceX = margin + serviceBoxWidth + 20;
-            }
-        });
-        
-        y = serviceY + 30;
-        doc.setFillColor(...colors.purple);
-        doc.roundedRect(margin, y, contentWidth, 70, 10, 10, 'F');
-        
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.white);
-        doc.text('AGENDA CONSULTA GRATUITA DE 30 MINUTOS', pageWidth/2, y + 28, { align: 'center' });
-        
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Analicemos los resultados y definamos el mejor camino', pageWidth/2, y + 50, { align: 'center' });
-        
-        y += 100;
-        doc.setFillColor(...colors.lightGray);
-        doc.roundedRect(margin, y, contentWidth, 100, 10, 10, 'F');
-        
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.purple);
-        doc.text('CONTACTO DIRECTO', pageWidth/2, y + 30, { align: 'center' });
-        
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...colors.primary);
-        doc.text('contacto@forjadigitalae.com', pageWidth/2, y + 55, { align: 'center' });
-        doc.text('+57 300 123 4567', pageWidth/2, y + 75, { align: 'center' });
-        
-        addFooter(doc, pageWidth, pageHeight, logoInfo);
-        
         // Guardar PDF
         const safeCompanyName = (companyData.name || 'Empresa').replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
         const fileName = `Reporte_Madurez_${safeCompanyName}_${new Date().getFullYear()}.pdf`;
@@ -2245,161 +1752,6 @@ async function downloadPDF() {
     } finally {
         hideLoading();
     }
-}
-
-// Funciones auxiliares
-function addPageHeader(doc, pageWidth, title, logoInfo) {
-    const headerHeight = 80;
-    
-    doc.setFillColor(248, 250, 252);
-    doc.rect(0, 0, pageWidth, headerHeight, 'F');
-    
-    if (logoInfo) {
-        try {
-            const logoWidth = 60;
-            const logoHeight = logoWidth / logoInfo.aspectRatio;
-            doc.addImage(logoInfo.data, 'PNG', 40, 15, logoWidth, logoHeight);
-        } catch (e) {}
-    }
-    
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(39, 50, 90);
-    doc.text(title, pageWidth - 40, 40, { align: 'right' });
-    
-    doc.setDrawColor(133, 96, 192);
-    doc.setLineWidth(2);
-    doc.line(40, headerHeight - 5, pageWidth - 40, headerHeight - 5);
-}
-
-function addFooter(doc, pageWidth, pageHeight, logoInfo) {
-    const footerY = pageHeight - 40;
-    
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(1);
-    doc.line(40, footerY, pageWidth - 40, footerY);
-    
-    const currentDate = new Date().toLocaleDateString('es-ES', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    doc.setFont('helvetica', 'normal');
-    
-    doc.text(currentDate, 40, pageHeight - 20);
-    doc.text(`Pagina ${doc.internal.getCurrentPageInfo().pageNumber}`, pageWidth - 40, pageHeight - 20, { align: 'right' });
-    
-    doc.setFontSize(7);
-    doc.text('contacto@forjadigitalae.com | +57 300 123 4567 | www.forjadigitalae.com', pageWidth/2, pageHeight - 15, { align: 'center' });
-}
-
-// ===== FUNCIONES AUXILIARES PARA PDF MEJORADO =====
-
-// Función para agregar header de página con logo
-function addPageHeader(doc, pageWidth, title, logoData) {
-    const headerHeight = 80;
-    
-    // Fondo del header
-    doc.setFillColor(248, 250, 252);
-    doc.rect(0, 0, pageWidth, headerHeight, 'F');
-    
-    // Logo pequeño
-    if (logoData) {
-        try {
-            doc.addImage(logoData, 'PNG', 40, 15, 60, 30);
-        } catch (e) {
-            console.warn('Error al insertar logo en header:', e);
-        }
-    }
-    
-    // Título
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(39, 50, 90);
-    doc.text(title, pageWidth - 40, 40, { align: 'right' });
-    
-    // Línea separadora
-    doc.setDrawColor(133, 96, 192);
-    doc.setLineWidth(2);
-    doc.line(40, headerHeight - 5, pageWidth - 40, headerHeight - 5);
-}
-
-// Función para agregar footer con logo
-function addFooter(doc, pageWidth, pageHeight, logoData) {
-    const footerY = pageHeight - 40;
-    
-    // Línea separadora
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(1);
-    doc.line(40, footerY, pageWidth - 40, footerY);
-    
-    const currentDate = new Date().toLocaleDateString('es-ES', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    doc.setFont('helvetica', 'normal');
-    
-    // Fecha
-    doc.text(currentDate, 40, pageHeight - 20);
-    
-    // Página
-    doc.text(`Página ${doc.internal.getCurrentPageInfo().pageNumber}`, pageWidth - 40, pageHeight - 20, { align: 'right' });
-    
-    // Contacto centrado
-    doc.setFontSize(7);
-    doc.text('contacto@forjadigitalae.com | +57 300 123 4567 | www.forjadigitalae.com', pageWidth/2, pageHeight - 15, { align: 'center' });
-}
-
-// Funciones auxiliares para PDF
-function getTopCategory() {
-    const categoryScores = appState.evaluationData.categoryScores || {};
-    let topCategory = { id: '', score: 0 };
-    
-    categories.forEach(cat => {
-        const score = categoryScores[cat.id] || 0;
-        if (score > topCategory.score) {
-            topCategory = { id: cat.id, score: score };
-        }
-    });
-    
-    return topCategory;
-}
-
-function getLowestCategory() {
-    const categoryScores = appState.evaluationData.categoryScores || {};
-    let lowestCategory = { id: '', score: 100 };
-    
-    categories.forEach(cat => {
-        const score = categoryScores[cat.id] || 0;
-        if (score < lowestCategory.score) {
-            lowestCategory = { id: cat.id, score: score };
-        }
-    });
-    
-    return lowestCategory;
-}
-
-function getCategoryNameById(id) {
-    const category = categories.find(cat => cat.id === id);
-    return category ? category.name : 'N/A';
-}
-
-// Función auxiliar para convertir hex a RGB
-function hexToRgbArray(hex) {
-    if (!hex || typeof hex !== 'string') return [0, 0, 0];
-    hex = hex.replace(/^#/, '');
-    if (hex.length === 3) {
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    const num = parseInt(hex, 16);
-    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
 // ===== EVENT LISTENERS =====
@@ -2424,110 +1776,24 @@ function initEventListeners() {
     // Enlace de política de privacidad
     const privacyLink = document.getElementById('privacyPolicyLink');
     if (privacyLink) {
-        privacyLink.addEven// ===== PERSONALIZACIÓN POR SECTOR =====
-const sectorAdaptations = {
-    'Tecnología': {
-        examples: 'como Slack, Zoom, GitHub o Jira',
-        focus: 'innovación, escalabilidad y agilidad',
-        pain_points: 'velocidad de desarrollo, retención de talento tech y competencia',
-        tools: 'herramientas de desarrollo, metodologías ágiles',
-        metrics: 'KPIs de desarrollo, time-to-market, uptime'
-    },
-    'Retail/Comercio': {
-        examples: 'como sistemas POS, e-commerce, CRM de ventas',
-        focus: 'experiencia del cliente, omnicanalidad y gestión de inventario',
-        pain_points: 'competencia online, gestión de stock y experiencia del cliente',
-        tools: 'sistemas de inventario, plataformas de e-commerce',
-        metrics: 'conversión, ticket promedio, rotación de inventario'
-    },
-    'Manufactura': {
-        examples: 'como ERP, sistemas de calidad, automatización',
-        focus: 'eficiencia operacional, calidad y optimización de procesos',
-        pain_points: 'costos de producción, calidad y tiempos de entrega',
-        tools: 'sistemas MES, control de calidad, automatización',
-        metrics: 'OEE, defectos por millón, tiempo de ciclo'
-    },
-    'Servicios': {
-        examples: 'como CRM, sistemas de facturación, gestión de proyectos',
-        focus: 'satisfacción del cliente, eficiencia y escalabilidad',
-        pain_points: 'gestión de clientes, escalabilidad y diferenciación',
-        tools: 'CRM, herramientas de gestión de proyectos',
-        metrics: 'NPS, utilización de recursos, margen por proyecto'
-    },
-    'Salud': {
-        examples: 'como historias clínicas digitales, telemedicina',
-        focus: 'calidad de atención, eficiencia y cumplimiento normativo',
-        pain_points: 'regulaciones, eficiencia operativa y experiencia del paciente',
-        tools: 'sistemas de gestión hospitalaria, telemedicina',
-        metrics: 'tiempo de atención, satisfacción del paciente, cumplimiento'
+        privacyLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPrivacyPolicy();
+        });
     }
-};
 
-function personalizeQuestionBySector(question) {
-    const sector = appState.companyData.sector || 'Servicios';
-    const adaptation = sectorAdaptations[sector] || sectorAdaptations['Servicios'];
-    
-    let personalizedText = question.text;
-    let personalizedTooltip = question.tooltip;
-    
-    // Personalización específica por pregunta
-    if (question.id === 'et_01') {
-        personalizedText = `¿La infraestructura tecnológica actual (${adaptation.examples}) soporta las necesidades del negocio?`;
-        personalizedTooltip = `La tecnología debe ser un habilitador para ${adaptation.focus}. En ${sector}, esto incluye ${adaptation.examples}.`;
+    const btnClosePrivacy = document.getElementById('btnClosePrivacy');
+    if (btnClosePrivacy) {
+        btnClosePrivacy.addEventListener('click', hidePrivacyPolicy);
     }
-    
-    if (question.id === 'po_02') {
-        per    // Formulario de inicio rápido
+
+    // Formulario de inicio rápido
     const quickStartForm = document.getElementById('quickStartForm');
     if (quickStartForm) {
         quickStartForm.addEventListener('submit', handleQuickStart);
     }
 
     // Formulario de registro completo
-    const registrationForm = document.getElementById('registrationForm');
-    if (registrationForm) {
-        registrationForm.addEventListener('submit', handleRegistration);
-    } ${adaptation.focus}.`;
-    }
-    
-    if (question.id === 'in_03') {
-        personalizedText = `¿Se utilizan herramientas de visualización para monitorear métricas clave (${adaptation.metrics})?`;
-        personalizedTooltip = `Dashboards muestran ${adaptation.metrics} en tiempo real para optimizar ${adaptation.focus}.`;
-    }
-    
-    if (question.id === 'cx_01') {
-        personalizedTooltip = `En ${sector}, es crucial medir la satisfacción considerando ${adaptation.pain_points}.`;
-    }
-    
-    if (question.id === 'ia_01') {
-        personalizedTooltip = `Para ${sector}, la innovación debe enfocarse en ${adaptation.focus} y resolver ${adaptation.pain_points}.`;
-    }
-    
-    return {
-        text: personalizedText,
-        tooltip: personalizedTooltip
-    };
-}
-
-// Función auxiliar para obtener el objeto de pregunta actual
-function getCurrentQuestion() {
-    const category = categories[appState.evaluationData.currentCategory];
-    if (!category) return null;
-    
-    const question = category.questions[appState.evaluationData.currentQuestion];
-    if (!question) return null;
-    
-    // Agregar la respuesta actual si existe
-    question.answer = appState.evaluationData.answers[question.id];
-    
-    return question;
-}
-
-console.log('%c🚀 ForjaDigitalAE - Evaluación inicializada correctamente', 'color: #4CCED5; font-size: 16px; font-weight: bold;');
-console.log('%c📊 Versión: 5.0 - Gamificación Completa', 'color: #EE8028; font-size: 12px;')       btnClosePrivacy.addEventListener('click', hidePrivacyPolicy);
-    }
-
-    // Formulario de registro
     const registrationForm = document.getElementById('registrationForm');
     if (registrationForm) {
         registrationForm.addEventListener('submit', handleRegistration);
@@ -2577,4 +1843,4 @@ window.addEventListener('error', function(e) {
 });
 
 console.log('%c🚀 ForjaDigitalAE - Evaluación inicializada correctamente', 'color: #4CCED5; font-size: 16px; font-weight: bold;');
-console.log('%c📊 Versión: 4.0 - Separación Modular', 'color: #EE8028; font-size: 12px;')
+console.log('%c📊 Versión: 5.0 - Gamificación Completa (CORREGIDA)', 'color: #EE8028; font-size: 12px;');
